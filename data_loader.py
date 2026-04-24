@@ -1,0 +1,83 @@
+import os
+import requests
+import pandas as pd
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
+from datetime import datetime, timezone
+
+def load_data_from_url(location: str):
+    """
+    Loads the images and metadata from the local server at the NTNU 
+    containing the image database for HYPSO 2.
+
+    Args:
+        location (str): The location of the images to load. Should match the 
+                        name of the location in the database (e.g., "dubai").
+    """
+
+    # Check that the location is provided
+    if location is None:
+        raise ValueError("Location must be provided.")
+    
+    # Make a directory to save the data if it doesn't exist already
+    os.makedirs(f"datasets/{location}", exist_ok=True)
+
+    # Open the URL to main directory of a location
+    url = f"http://129.241.2.147:8009/{location}/"
+    response = requests.get(url, timeout=30)
+    response.raise_for_status()
+
+    # Store the HTML content of the page in a data structure
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    # List to store meta data
+    all_meta_data = []
+
+    # Iterate through the URLs of the subdirectories and collect the data
+    for link in soup.find_all("a"):
+        href = link.get("href")
+
+        if href:
+            dir_url = urljoin(url, href)
+
+            try:
+                # Open the URL of the subdirectory
+                dir_response = requests.get(dir_url, timeout=30)
+                dir_response.raise_for_status()
+                dir_soup = BeautifulSoup(dir_response.text, "html.parser")
+
+                # Find the link to the meta data file
+                meta_link = dir_soup.find("a", href=lambda h: h and h.endswith("-meta.json"))
+
+                # Find the link to the hyperspectral image file
+                image_link = dir_soup.find("a", href=lambda h: h and h.endswith("-scaled-radiance.png"))
+
+                # Collect the data
+                if meta_link and image_link:
+                    meta_url = urljoin(dir_url, meta_link.get("href"))
+                    meta_response = requests.get(meta_url, timeout=30)
+                    meta_response.raise_for_status()
+                    meta_data = meta_response.json()
+                    all_meta_data.append(meta_data)
+
+                    image_url = urljoin(dir_url, image_link.get("href"))
+                    image_response = requests.get(image_url, timeout=30)
+                    image_response.raise_for_status()
+
+                    # Save image
+                    image = image_response.content
+                    timestamp = meta_data["timestamp_acquired"]
+                    utc_dt = datetime.fromtimestamp(float(timestamp), tz=timezone.utc)
+                    time_str = utc_dt.strftime("%Y-%m-%dT%H-%M-%SZ")
+                    with open(f"datasets/{location}/{time_str}.png", "wb") as f:
+                        f.write(image)
+                    print(f"Saved image to datasets/{location}/{time_str}.png")
+
+            except requests.exceptions.RequestException as e:
+                print(f"Could not process {dir_url}: {e}")
+
+    # Save metadata to a csv file
+    if all_meta_data:
+        df = pd.DataFrame(all_meta_data)
+        df.to_csv(f"datasets/{location}/metadata.csv", index=False)
+        print(f"Saved metadata to datasets/{location}/metadata.csv.")
