@@ -21,6 +21,8 @@ def load_data_from_url(location: str):
     
     # Make a directory to save the data if it doesn't exist already
     os.makedirs(f"datasets/{location}", exist_ok=True)
+    os.makedirs(f"datasets/{location}/images", exist_ok=True)
+    os.makedirs(f"datasets/{location}/raw", exist_ok=True)
 
     # Open the URL to main directory of a location
     url = f"http://129.241.2.147:8009/{location}/"
@@ -52,26 +54,46 @@ def load_data_from_url(location: str):
                 # Find the link to the hyperspectral image file
                 image_link = dir_soup.find("a", href=lambda h: h and h.endswith("-scaled-radiance.png"))
 
+                # Find the link to the raw data file
+                raw_link = dir_soup.find("a", href=lambda h: h and h.endswith("-l1a.nc"))
+
                 # Collect the data
-                if meta_link and image_link:
+                if meta_link and image_link and raw_link:
                     meta_url = urljoin(dir_url, meta_link.get("href"))
                     meta_response = requests.get(meta_url, timeout=30)
                     meta_response.raise_for_status()
                     meta_data = meta_response.json()
                     all_meta_data.append(meta_data)
 
+                    timestamp = meta_data["timestamp_acquired"]
+                    utc_dt = datetime.fromtimestamp(float(timestamp), tz=timezone.utc)
+                    time_str = utc_dt.strftime("%Y-%m-%dT%H-%M-%SZ")
+
+                    # Save image
                     image_url = urljoin(dir_url, image_link.get("href"))
                     image_response = requests.get(image_url, timeout=30)
                     image_response.raise_for_status()
 
-                    # Save image
                     image = image_response.content
-                    timestamp = meta_data["timestamp_acquired"]
-                    utc_dt = datetime.fromtimestamp(float(timestamp), tz=timezone.utc)
-                    time_str = utc_dt.strftime("%Y-%m-%dT%H-%M-%SZ")
-                    with open(f"datasets/{location}/{time_str}.png", "wb") as f:
+                    with open(f"datasets/{location}/images/{time_str}.png", "wb") as f:
                         f.write(image)
                     print(f"Saved image to datasets/{location}/{time_str}.png")
+                    
+                    # Save raw data (streaming download for large files)
+                    if raw_link:
+                        raw_url = urljoin(dir_url, raw_link.get("href"))
+                        raw_path = f"datasets/{location}/raw/{location}_{time_str}-l1a.nc"
+                        tmp_path = raw_path + ".part"
+
+                        with requests.get(raw_url, timeout=60, stream=True) as raw_response:
+                            raw_response.raise_for_status()
+                            with open(tmp_path, "wb") as f:
+                                for chunk in raw_response.iter_content(chunk_size=8 * 1024 * 1024):  # 8 MB chunks
+                                    if chunk:
+                                        f.write(chunk)
+
+                        os.replace(tmp_path, raw_path)  # atomic rename when complete
+                        print(f"Saved raw data to {raw_path}")
 
             except requests.exceptions.RequestException as e:
                 print(f"Could not process {dir_url}: {e}")
