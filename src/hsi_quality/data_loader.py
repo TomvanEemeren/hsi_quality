@@ -1,15 +1,15 @@
 import os
-import sys
+from pathlib import Path
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from datetime import datetime, timezone
 
-path = os.path.abspath(os.path.join(os.path.dirname(__file__),"src","hypso"))
-sys.path.append(path)
-
 from hypso import Hypso2
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+DATA_DIR = os.path.join(ROOT_DIR, "datasets")
 
 def load_data_from_url(location: str):
     """
@@ -26,10 +26,9 @@ def load_data_from_url(location: str):
         raise ValueError("Location must be provided.")
     
     # Make a directory to save the data if it doesn't exist already
-    os.makedirs(f"datasets/{location}", exist_ok=True)
-    os.makedirs(f"datasets/{location}/images", exist_ok=True)
-    os.makedirs(f"datasets/{location}/raw", exist_ok=True)
-
+    os.makedirs(os.path.join(DATA_DIR, location, "radiance"), exist_ok=True)
+    os.makedirs(os.path.join(DATA_DIR, location, "raw"), exist_ok=True)
+    
     # Open the URL to main directory of a location
     url = f"http://129.241.2.147:8009/{location}/"
     response = requests.get(url, timeout=30)
@@ -81,14 +80,14 @@ def load_data_from_url(location: str):
                     image_response.raise_for_status()
 
                     image = image_response.content
-                    with open(f"datasets/{location}/radiance/{time_str}.png", "wb") as f:
+                    with open(os.path.join(DATA_DIR, location, "radiance", time_str + ".png"), "wb") as f:
                         f.write(image)
-                    print(f"Saved image to datasets/{location}/radiance/{time_str}.png")
-                    
+                    print(f"Saved image to {os.path.join(DATA_DIR, location, 'radiance', time_str + '.png')}")
+
                     # Save raw data (streaming download for large files)
                     if raw_link:
                         raw_url = urljoin(dir_url, raw_link.get("href"))
-                        raw_path = f"datasets/{location}/raw/{location}_{time_str}-l1a.nc"
+                        raw_path = os.path.join(DATA_DIR, location, "raw", f"{location}_{time_str}-l1a.nc")
                         tmp_path = raw_path + ".part"
 
                         with requests.get(raw_url, timeout=60, stream=True) as raw_response:
@@ -107,8 +106,8 @@ def load_data_from_url(location: str):
     # Save metadata to a csv file
     if all_meta_data:
         df = pd.DataFrame(all_meta_data)
-        df.to_csv(f"datasets/{location}/metadata.csv", index=False)
-        print(f"Saved metadata to datasets/{location}/metadata.csv.")
+        df.to_csv(os.path.join(DATA_DIR, location, "metadata.csv"), index=False)
+        print(f"Saved metadata to {os.path.join(DATA_DIR, location, 'metadata.csv')}.")
 
 def load_nc_file(file_name: str):
     """
@@ -137,7 +136,7 @@ def load_nc_file(file_name: str):
         raise ValueError("Unexpected filename format")
 
     # Create the file path
-    file_path = os.path.join("datasets", target, "processed", file_name)
+    file_path = os.path.join(DATA_DIR, target, "processed", file_name)
 
     # Load the data and store it in a Hypso2 object
     satobj_h2 = Hypso2(path=file_path, verbose=False)

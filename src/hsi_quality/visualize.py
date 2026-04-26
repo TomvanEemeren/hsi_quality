@@ -1,14 +1,14 @@
 import os
-import sys
+from pathlib import Path
 import numpy as np
 import xarray as xr
 from matplotlib import pyplot as plt
 
-path = os.path.abspath(os.path.join(os.path.dirname(__file__),"src","hypso"))
-sys.path.append(path)
-
 from hypso import Hypso2
 from hypso.spectral_analysis import get_closest_wavelength_index
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+DATA_DIR = os.path.join(ROOT_DIR, "datasets")
 
 def plot_rgb(satobj_h2: Hypso2, cube: xr.DataArray, save: bool = False):
     """
@@ -61,8 +61,8 @@ def plot_rgb(satobj_h2: Hypso2, cube: xr.DataArray, save: bool = False):
     if save:
         name = satobj_h2.l1d_name
         target = name.split("_")[0]
-        os.makedirs(os.path.join("datasets", target, "reflectance"), exist_ok=True)
-        output_path = os.path.join("datasets", target, "reflectance", name + ".png")
+        os.makedirs(os.path.join(DATA_DIR, target, "reflectance"), exist_ok=True)
+        output_path = os.path.join(DATA_DIR, target, "reflectance", name + ".png")
 
         fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
         print(f"Saved RGB image to {output_path}")
