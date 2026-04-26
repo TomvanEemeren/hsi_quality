@@ -1,9 +1,15 @@
 import os
+import sys
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from datetime import datetime, timezone
+
+path = os.path.abspath(os.path.join(os.path.dirname(__file__),"src","hypso"))
+sys.path.append(path)
+
+from hypso import Hypso2
 
 def load_data_from_url(location: str):
     """
@@ -75,9 +81,9 @@ def load_data_from_url(location: str):
                     image_response.raise_for_status()
 
                     image = image_response.content
-                    with open(f"datasets/{location}/images/{time_str}.png", "wb") as f:
+                    with open(f"datasets/{location}/radiance/{time_str}.png", "wb") as f:
                         f.write(image)
-                    print(f"Saved image to datasets/{location}/{time_str}.png")
+                    print(f"Saved image to datasets/{location}/radiance/{time_str}.png")
                     
                     # Save raw data (streaming download for large files)
                     if raw_link:
@@ -103,3 +109,37 @@ def load_data_from_url(location: str):
         df = pd.DataFrame(all_meta_data)
         df.to_csv(f"datasets/{location}/metadata.csv", index=False)
         print(f"Saved metadata to datasets/{location}/metadata.csv.")
+
+def load_nc_file(file_name: str):
+    """
+    Loads the HYPSO-2 hyperspectral captures at any level:
+    - L1a (raw data)
+    - L1b (top-of-atmosphere radiance)
+    - L1c (top-of-atmosphere radiance with georeferencing)
+    - L1d (top-of-atmosphere reflectance with georeferencing)
+
+    Args:
+        file_name (str): The name of the netCDF file to load. Should be in the format
+                          "{location}_{timestamp}-{level}.nc"
+    Returns:
+        Hypso2 object containing the data from the netCDF file.
+    """
+    if not file_name:
+        raise ValueError("file_name must be provided.")
+    
+    # Split filename into target + rest
+    fields = file_name.removesuffix(".nc").split("_")
+
+    # Get only the target (location)
+    if len(fields) == 2:
+        target, _ = fields
+    else:
+        raise ValueError("Unexpected filename format")
+
+    # Create the file path
+    file_path = os.path.join("datasets", target, "processed", file_name)
+
+    # Load the data and store it in a Hypso2 object
+    satobj_h2 = Hypso2(path=file_path, verbose=False)
+
+    return satobj_h2
