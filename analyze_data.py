@@ -23,3 +23,5 @@ from hsi_quality.visualize import plot_rgb
 l1d_cube = satobj_h2.l1d_cube
 
 plot_rgb(satobj_h2, l1d_cube, save=True)
+
+# %%
