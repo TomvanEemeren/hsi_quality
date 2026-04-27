@@ -32,8 +32,9 @@ class Hypso2(HypsoBase):
         self.VERBOSE = verbose
         self.label = label
 
-        print("[INFO] Detected plaform: " + self.platform)
-        print("[INFO] Detected sensor: " + self.sensor)        
+        if self.VERBOSE:
+            print("[INFO] Detected plaform: " + self.platform)
+            print("[INFO] Detected sensor: " + self.sensor)        
 
         self.fwhm = np.array([5.46, 5.46, 5.46, 5.46, 5.46, 5.46, 5.46, 5.46, 5.46, 5.46, 5.46,
                               5.46, 5.46, 5.46, 5.46, 5.46, 5.46, 5.46, 5.46, 5.46, 5.46, 5.46,

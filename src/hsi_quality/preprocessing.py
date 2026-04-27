@@ -37,7 +37,7 @@ def preprocess_hyperspectral_image(nc_file: str, target: str):
         target (str): The target location for which to preprocess the data.
 
     Returns:
-        tuple: A tuple containing the L1a cube, L1b cube, and L1c cube.
+        tuple: A tuple containing the L1d datacube and Hypso-2 satellite object.
     """
 
     # Hypso-2 capture

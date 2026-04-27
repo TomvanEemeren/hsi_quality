@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 
 from hypso import Hypso2
 from hypso.spectral_analysis import get_closest_wavelength_index
+from hypso.geometry.nearest import get_nearest_pixel
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = os.path.join(ROOT_DIR, "datasets")
@@ -19,6 +20,9 @@ def plot_rgb(satobj_h2: Hypso2, cube: xr.DataArray, save: bool = False):
         satobj_h2 (Hypso2): The Hypso2 satellite object.
         cube (xr.DataArray): The hyperspectral datacube.
         save (bool): Whether to save the RGB image. Defaults to False.
+
+    Returns:
+        np.ndarray: The RGB image as a NumPy array.
     """      
     # Get wavelengths of capture
     satobj_h2.wavelengths
@@ -66,6 +70,10 @@ def plot_rgb(satobj_h2: Hypso2, cube: xr.DataArray, save: bool = False):
 
         fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
         print(f"Saved RGB image to {output_path}")
-
-    plt.show()
+    else:
+        # Display the RGB image
+        plt.show()
+    
     plt.close(fig)
+
+    return rotated_rgb
