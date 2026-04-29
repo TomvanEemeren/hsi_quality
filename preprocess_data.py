@@ -18,6 +18,6 @@ load_data_from_url("dubai")
 # %%
 from hsi_quality.preprocessing import preprocess_data
 
-preprocess_data("dubai")
+preprocess_data("dubai", full=False)
 
 # %%
