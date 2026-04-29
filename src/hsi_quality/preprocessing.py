@@ -6,13 +6,13 @@ from pathlib import Path
 
 from hypso import Hypso2
 from hypso.write import write_l1d_nc_file
+from hsi_quality.utils import convert_timestamp
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = os.path.join(ROOT_DIR, "datasets")
 
 class Pipeline:
-    def __init__(self, metadata: pd.DataFrame, full: bool = True):
-        self.metadata = metadata
+    def __init__(self, full: bool = True):
         self.full = full
 
     def run(self, target: str, nc_file: str):
@@ -27,7 +27,8 @@ class Pipeline:
             smear_error = has_smear_error(flipped_cube)
             satobj.l1d_cube = flipped_cube
 
-        self.store_capture(satobj, target)
+        capture_name = nc_file.replace("-l1a.nc", "-l1d.nc")
+        self.store_capture(satobj, target, capture_name)
 
     def load_capture(self, target: str, nc_file: str):
         # Path to Hypso-2 capture
@@ -49,9 +50,7 @@ class Pipeline:
         # No flipping needed
         return l1d_cube
     
-    def store_capture(self, satobj: Hypso2, target: str):
-        name = satobj.capture_name
-
+    def store_capture(self, satobj: Hypso2, target: str, capture_name: str):
         if self.full:
             dir_name = "corrected"
         else:
@@ -61,7 +60,7 @@ class Pipeline:
         os.makedirs(os.path.join(DATA_DIR,target,dir_name), exist_ok=True)
 
         # Save the reflectance data
-        nc_file = name + "-l1d.nc"
+        nc_file = capture_name + "-l1d.nc"
         l1d_path = os.path.join(DATA_DIR,target,dir_name,nc_file)
         write_l1d_nc_file(satobj=satobj, l1d_path=l1d_path, overwrite=True)
 
@@ -73,16 +72,18 @@ def preprocess_data(target: str, full: bool = True):
     Args:
         target (str): The target location for which to preprocess the data.
     """
-
-    # Path to Hypso-2 captures
-    raw_dir = os.path.join(DATA_DIR, target, "raw")
-    nc_files = os.listdir(raw_dir)
     metadata = pd.read_csv(os.path.join(DATA_DIR, target, "metadata.csv"))
 
-    pipeline = Pipeline(metadata=metadata, full=full)
+    pipeline = Pipeline(full=full)
 
     # Iterate through Hypso-2 captures
-    for nc_file in nc_files:
+    for idx in range(len(metadata)):
+        row = metadata.iloc[idx]
+        timestamp = convert_timestamp(row["timestamp_acquired_string"])
+        target = row["location_description"]
+
+        nc_file = f"{row['location_description']}_{timestamp}-l1a.nc"
+
         # Preprocess the hyperspectral image
         pipeline.run(target=target, nc_file=nc_file)
 

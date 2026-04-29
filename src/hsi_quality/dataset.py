@@ -1,8 +1,7 @@
-import xarray as xr
 import pandas as pd
-import datetime as dt
 
 from hypso import Hypso2
+from hsi_quality.utils import convert_timestamp
 
 class Dataset:
     def __init__(self, dataframe: pd.DataFrame):
@@ -36,7 +35,7 @@ class Dataset:
         # Get metadata for the capture
         target = row["location_description"]
         timestamp = row["timestamp_acquired_string"]
-        timestamp = self._convert_timestamp(timestamp)
+        timestamp = convert_timestamp(timestamp)
 
         # Create the path to the netcdf file
         file_name = f"{target}_{timestamp}-l1d.nc"
@@ -53,15 +52,6 @@ class Dataset:
         satobj = Hypso2(path=path, verbose=False)
 
         return satobj
-    
-    def _convert_timestamp(self, timestamp: str):
-        format = "%Y-%m-%dT%H-%M-%SZ"
-
-        # Convert the timestamp string to a datetime object
-        timestamp = pd.to_datetime(timestamp, utc=True)
-        timestamp = timestamp.strftime(format)
-
-        return timestamp
     
 
 
