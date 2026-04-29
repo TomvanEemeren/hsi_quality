@@ -5,7 +5,7 @@ from hypso import Hypso2
 def convert_timestamp(timestamp: str) -> str:
     format = "%Y-%m-%dT%H-%M-%SZ"
 
-    # Convert the timestamp string to a datetime object
+    # Convert the timestamp to a specific format
     timestamp = pd.to_datetime(timestamp, utc=True)
     timestamp = timestamp.strftime(format)
 
