@@ -53,11 +53,11 @@ def load_data_from_url(location: str):
                 response.raise_for_status()
                 soup = BeautifulSoup(response.text, "html.parser")
 
-                metadata = load_metadata(capture_url)
+                metadata = load_metadata(capture_url, soup)
 
-                load_raw_data(location, capture_url, capture_name)
+                load_raw_data(location, capture_url, capture_name, soup)
 
-                load_radiance_image(location, capture_url, capture_name)
+                load_radiance_image(location, capture_url, capture_name, soup)
 
                 all_metadata.append(metadata)
 
@@ -69,9 +69,9 @@ def load_data_from_url(location: str):
         df.to_csv(os.path.join(DATA_DIR, location, "metadata.csv"), index=False)
         print(f"Saved metadata to {os.path.join(DATA_DIR, location, 'metadata.csv')}.")
 
-def load_metadata(url: str):
+def load_metadata(url: str, soup: BeautifulSoup):
     # Find the link to the meta data file
-    meta_link = url.find("a", href=lambda h: h and h.endswith("-meta.json"))
+    meta_link = soup.find("a", href=lambda h: h and h.endswith("-meta.json"))
 
     if meta_link:
         meta_url = urljoin(url, meta_link.get("href"))
@@ -80,9 +80,9 @@ def load_metadata(url: str):
     
     return response.json()
 
-def load_raw_data(location: str, url: str, capture_name: str):
+def load_raw_data(location: str, url: str, capture_name: str, soup: BeautifulSoup):
     # Find the link to the raw data file
-    raw_link = url.find("a", href=lambda h: h and h.endswith("-l1a.nc"))
+    raw_link = soup.find("a", href=lambda h: h and h.endswith("-l1a.nc"))
 
     if raw_link:
         os.makedirs(os.path.join(DATA_DIR, location, "raw"), exist_ok=True)
@@ -102,9 +102,9 @@ def load_raw_data(location: str, url: str, capture_name: str):
         os.replace(tmp_path, raw_path)  # atomic rename when complete
         print(f"Saved raw data to {raw_path}")
 
-def load_radiance_image(location: str, url: str, capture_name: str):
+def load_radiance_image(location: str, url: str, capture_name: str, soup: BeautifulSoup):
     # Find the link to the hyperspectral image file
-    image_link = url.find("a", href=lambda h: h and h.endswith("-scaled-radiance.png"))
+    image_link = soup.find("a", href=lambda h: h and h.endswith("-scaled-radiance.png"))
 
     if image_link:
         os.makedirs(os.path.join(DATA_DIR, location, "radiance"), exist_ok=True)
