@@ -6,8 +6,6 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from datetime import datetime, timezone
 
-from hypso import Hypso2
-
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = os.path.join(ROOT_DIR, "datasets")
 
@@ -20,102 +18,103 @@ def load_data_from_url(location: str):
         location (str): The location of the images to load. Should match the 
                         name of the location in the database (e.g., "dubai").
     """
+    location = location
+    all_metadata = []
 
-    # Check that the location is provided
-    if location is None:
-        raise ValueError("Location must be provided.")
-
-    # Make a directory to save the data if it doesn't exist already
-    os.makedirs(os.path.join(DATA_DIR, location, "radiance"), exist_ok=True)
+    os.makedirs(os.path.join(DATA_DIR, location), exist_ok=True)
     os.makedirs(os.path.join(DATA_DIR, location, "raw"), exist_ok=True)
-    
-    # Get list of existing raw files
+
     raw_dir = os.path.join(DATA_DIR, location, "raw")
     existing_files = set(os.listdir(raw_dir)) if os.path.exists(raw_dir) else set()
-    
+
     # Open the URL to main directory of a location
     url = f"http://129.241.2.147:8009/{location}/"
     response = requests.get(url, timeout=30)
     response.raise_for_status()
 
-    # Store the HTML content of the page in a data structure
+    # Store all captures for a specific location
     soup = BeautifulSoup(response.text, "html.parser")
+    captures = soup.find_all("a")
 
-    # List to store meta data
-    all_meta_data = []
-
-    # Iterate through the URLs of the subdirectories and collect the data
-    for link in soup.find_all("a"):
+    # Iterate through the captures
+    for link in captures:
         href = link.get("href")
-
         if href:
-            dir_url = urljoin(url, href)
+            capture_name = href.strip("/")
 
+            # Skip if raw file already exists
+            if capture_name in existing_files:
+                print(f"Skipping {capture_name} - already downloaded")
+                continue
+
+            capture_url = urljoin(url, href)
             try:
-                # Open the URL of the subdirectory
-                dir_response = requests.get(dir_url, timeout=30)
-                dir_response.raise_for_status()
-                dir_soup = BeautifulSoup(dir_response.text, "html.parser")
+                response = requests.get(capture_url, timeout=30)
+                response.raise_for_status()
+                soup = BeautifulSoup(response.text, "html.parser")
 
-                # Find the link to the meta data file
-                meta_link = dir_soup.find("a", href=lambda h: h and h.endswith("-meta.json"))
+                metadata = load_metadata(capture_url)
 
-                # Find the link to the hyperspectral image file
-                image_link = dir_soup.find("a", href=lambda h: h and h.endswith("-scaled-radiance.png"))
+                load_raw_data(location, capture_url, capture_name)
 
-                # Find the link to the raw data file
-                raw_link = dir_soup.find("a", href=lambda h: h and h.endswith("-l1a.nc"))
+                load_radiance_image(location, capture_url, capture_name)
 
-                # Collect the data
-                if meta_link and image_link and raw_link:
-                    meta_url = urljoin(dir_url, meta_link.get("href"))
-                    meta_response = requests.get(meta_url, timeout=30)
-                    meta_response.raise_for_status()
-                    meta_data = meta_response.json()
+                all_metadata.append(metadata)
 
-                    timestamp = meta_data["timestamp_acquired"]
-                    utc_dt = datetime.fromtimestamp(float(timestamp), tz=timezone.utc)
-                    time_str = utc_dt.strftime("%Y-%m-%dT%H-%M-%SZ")
-
-                    raw_filename = f"{location}_{time_str}-l1a.nc"
-                    
-                    # Skip if raw file already exists
-                    if raw_filename in existing_files:
-                        print(f"Skipping {raw_filename} - already downloaded")
-                        continue
-
-                    # Save image
-                    image_url = urljoin(dir_url, image_link.get("href"))
-                    image_response = requests.get(image_url, timeout=30)
-                    image_response.raise_for_status()
-
-                    image = image_response.content
-                    with open(os.path.join(DATA_DIR, location, "radiance", time_str + ".png"), "wb") as f:
-                        f.write(image)
-                    print(f"Saved image to {os.path.join(DATA_DIR, location, 'radiance', time_str + '.png')}")
-
-                    # Save raw data (streaming download for large files)
-                    raw_url = urljoin(dir_url, raw_link.get("href"))
-                    raw_path = os.path.join(DATA_DIR, location, "raw", raw_filename)
-                    tmp_path = raw_path + ".part"
-
-                    with requests.get(raw_url, timeout=60, stream=True) as raw_response:
-                        raw_response.raise_for_status()
-                        with open(tmp_path, "wb") as f:
-                            for chunk in raw_response.iter_content(chunk_size=8 * 1024 * 1024):  # 8 MB chunks
-                                if chunk:
-                                    f.write(chunk)
-
-                    os.replace(tmp_path, raw_path)  # atomic rename when complete
-                    print(f"Saved raw data to {raw_path}")
-
-                    all_meta_data.append(meta_data)
-           
             except requests.exceptions.RequestException as e:
-                print(f"Could not process {dir_url}: {e}")
+                print(f"Could not process {capture_url}: {e}")
 
-    # Save metadata to a csv file
-    if all_meta_data:
-        df = pd.DataFrame(all_meta_data)
+    if all_metadata:
+        df = pd.DataFrame(all_metadata)
         df.to_csv(os.path.join(DATA_DIR, location, "metadata.csv"), index=False)
         print(f"Saved metadata to {os.path.join(DATA_DIR, location, 'metadata.csv')}.")
+
+def load_metadata(url: str):
+    # Find the link to the meta data file
+    meta_link = url.find("a", href=lambda h: h and h.endswith("-meta.json"))
+
+    if meta_link:
+        meta_url = urljoin(url, meta_link.get("href"))
+        response = requests.get(meta_url, timeout=30)
+        response.raise_for_status()
+    
+    return response.json()
+
+def load_raw_data(location: str, url: str, capture_name: str):
+    # Find the link to the raw data file
+    raw_link = url.find("a", href=lambda h: h and h.endswith("-l1a.nc"))
+
+    if raw_link:
+        os.makedirs(os.path.join(DATA_DIR, location, "raw"), exist_ok=True)
+
+        # Save raw data (streaming download for large files)
+        raw_url = urljoin(url, raw_link.get("href"))
+        raw_path = os.path.join(DATA_DIR, location, "raw", capture_name + "-l1a.nc")
+        tmp_path = raw_path + ".part"
+
+        with requests.get(raw_url, timeout=60, stream=True) as raw_response:
+                            raw_response.raise_for_status()
+                            with open(tmp_path, "wb") as f:
+                                for chunk in raw_response.iter_content(chunk_size=8 * 1024 * 1024):  # 8 MB chunks
+                                    if chunk:
+                                        f.write(chunk)
+
+        os.replace(tmp_path, raw_path)  # atomic rename when complete
+        print(f"Saved raw data to {raw_path}")
+
+def load_radiance_image(location: str, url: str, capture_name: str):
+    # Find the link to the hyperspectral image file
+    image_link = url.find("a", href=lambda h: h and h.endswith("-scaled-radiance.png"))
+
+    if image_link:
+        os.makedirs(os.path.join(DATA_DIR, location, "radiance"), exist_ok=True)
+
+        # Save image
+        image_url = urljoin(url, image_link.get("href"))
+        response = requests.get(image_url, timeout=30)
+        response.raise_for_status()
+
+        image = response.content
+        with open(os.path.join(DATA_DIR, location, "radiance", capture_name + ".png"), "wb") as f:
+            f.write(image)
+        print(f"Saved image to {os.path.join(DATA_DIR, location, 'radiance', capture_name + '.png')}")
