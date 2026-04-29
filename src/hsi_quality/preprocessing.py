@@ -15,9 +15,12 @@ class Pipeline:
     def __init__(self, full: bool = True):
         self.full = full
 
-    def run(self, target: str, nc_file: str):
+    def run(self, row: pd.Series, nc_file: str, areas: np.ndarray) -> bool:
+        target = row["location_description"]
+        aoi = row["area"]
         smear_error = False
         rainbow_error = False
+        has_error = False
 
         satobj = self.load_capture(target, nc_file)
         satobj.generate_l1b_cube(coeff_type="moved")
@@ -26,14 +29,26 @@ class Pipeline:
 
         if self.full:
             flipped_cube = self.flip_hyperspectral_image(satobj)
-            rainbow_error = self.has_rainbow_error(flipped_cube)
-            smear_error = self.has_smear_error(flipped_cube)
             satobj.l1d_cube = flipped_cube
 
-        capture_name = nc_file.replace("-l1a.nc", "-l1d.nc")
-        self.store_capture(satobj, target, capture_name)
+            # Check for errors in the capture
+            outlier = self.detect_outliers(aoi, areas)
+            rainbow_error = self.has_rainbow_error(flipped_cube)
+            smear_error = self.has_smear_error(flipped_cube)
 
-        return rainbow_error, smear_error
+            has_error = outlier or \
+                        rainbow_error or \
+                        smear_error or \
+                        row["overexposed_samples_percentage"] > 5 or \
+                        row["star_tracker_blinded_percentage"] > 90
+
+        if not has_error:
+            capture_name = nc_file.replace("-l1a.nc", "-l1d.nc")
+            self.store_capture(satobj, target, capture_name)
+
+            return True
+        
+        return False 
 
     def load_capture(self, target: str, nc_file: str):
         # Path to Hypso-2 capture
@@ -90,9 +105,15 @@ class Pipeline:
 
         return False
     
+    def detect_outliers(self, aoi: float, areas: np.ndarray) -> bool:
+        mean = np.mean(areas)
+        std = np.std(areas)
+        outlier = abs(aoi - mean) > 2 * std
+        return outlier
+
     def store_capture(self, satobj: Hypso2, target: str, capture_name: str):
         if self.full:
-            dir_name = "corrected"
+            dir_name = "cleaned"
         else:
             dir_name = "reflectance"
 
@@ -114,9 +135,7 @@ def preprocess_data(target: str, full: bool = True):
     """
     metadata = pd.read_csv(os.path.join(DATA_DIR, target, "metadata.csv"))
 
-    # Add error columns to the metadata
-    metadata["rainbow_error"] = False
-    metadata["smear_error"] = False
+    areas = metadata["area"].to_numpy()
 
     pipeline = Pipeline(full=full)
 
@@ -129,14 +148,12 @@ def preprocess_data(target: str, full: bool = True):
         nc_file = f"{row['location_description']}_{timestamp}-l1a.nc"
 
         # Preprocess the hyperspectral image
-        rainbow_error, smear_error = pipeline.run(target=target, nc_file=nc_file)
-
-        # Update the metadata with error information
-        metadata.at[idx, "rainbow_error"] = rainbow_error
-        metadata.at[idx, "smear_error"] = smear_error
+        if not pipeline.run(row=row, nc_file=nc_file, areas=areas):
+            print(f"Capture {nc_file} has errors and will be removed from the dataset.")
+            metadata.drop(idx, inplace=True)
 
     # Save the updated metadata
-    metadata.to_csv(os.path.join(DATA_DIR, target, "metadata.csv"), index=False)
+    metadata.to_csv(os.path.join(DATA_DIR, target, "metadata_cleaned.csv"), index=False)
 
 def crop_hyperspectral_image(satobj_h2: Hypso2, x1: int, x2: int, y1: int, y2: int) -> xr.DataArray:
     l1d_cube = satobj_h2.l1d_cube
