@@ -24,10 +24,14 @@ def load_data_from_url(location: str):
     # Check that the location is provided
     if location is None:
         raise ValueError("Location must be provided.")
-    
+
     # Make a directory to save the data if it doesn't exist already
     os.makedirs(os.path.join(DATA_DIR, location, "radiance"), exist_ok=True)
     os.makedirs(os.path.join(DATA_DIR, location, "raw"), exist_ok=True)
+    
+    # Get list of existing raw files
+    raw_dir = os.path.join(DATA_DIR, location, "raw")
+    existing_files = set(os.listdir(raw_dir)) if os.path.exists(raw_dir) else set()
     
     # Open the URL to main directory of a location
     url = f"http://129.241.2.147:8009/{location}/"
@@ -68,11 +72,17 @@ def load_data_from_url(location: str):
                     meta_response = requests.get(meta_url, timeout=30)
                     meta_response.raise_for_status()
                     meta_data = meta_response.json()
-                    all_meta_data.append(meta_data)
 
                     timestamp = meta_data["timestamp_acquired"]
                     utc_dt = datetime.fromtimestamp(float(timestamp), tz=timezone.utc)
                     time_str = utc_dt.strftime("%Y-%m-%dT%H-%M-%SZ")
+
+                    raw_filename = f"{location}_{time_str}-l1a.nc"
+                    
+                    # Skip if raw file already exists
+                    if raw_filename in existing_files:
+                        print(f"Skipping {raw_filename} - already downloaded")
+                        continue
 
                     # Save image
                     image_url = urljoin(dir_url, image_link.get("href"))
@@ -85,21 +95,22 @@ def load_data_from_url(location: str):
                     print(f"Saved image to {os.path.join(DATA_DIR, location, 'radiance', time_str + '.png')}")
 
                     # Save raw data (streaming download for large files)
-                    if raw_link:
-                        raw_url = urljoin(dir_url, raw_link.get("href"))
-                        raw_path = os.path.join(DATA_DIR, location, "raw", f"{location}_{time_str}-l1a.nc")
-                        tmp_path = raw_path + ".part"
+                    raw_url = urljoin(dir_url, raw_link.get("href"))
+                    raw_path = os.path.join(DATA_DIR, location, "raw", raw_filename)
+                    tmp_path = raw_path + ".part"
 
-                        with requests.get(raw_url, timeout=60, stream=True) as raw_response:
-                            raw_response.raise_for_status()
-                            with open(tmp_path, "wb") as f:
-                                for chunk in raw_response.iter_content(chunk_size=8 * 1024 * 1024):  # 8 MB chunks
-                                    if chunk:
-                                        f.write(chunk)
+                    with requests.get(raw_url, timeout=60, stream=True) as raw_response:
+                        raw_response.raise_for_status()
+                        with open(tmp_path, "wb") as f:
+                            for chunk in raw_response.iter_content(chunk_size=8 * 1024 * 1024):  # 8 MB chunks
+                                if chunk:
+                                    f.write(chunk)
 
-                        os.replace(tmp_path, raw_path)  # atomic rename when complete
-                        print(f"Saved raw data to {raw_path}")
+                    os.replace(tmp_path, raw_path)  # atomic rename when complete
+                    print(f"Saved raw data to {raw_path}")
 
+                    all_meta_data.append(meta_data)
+           
             except requests.exceptions.RequestException as e:
                 print(f"Could not process {dir_url}: {e}")
 
