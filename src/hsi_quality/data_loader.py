@@ -59,6 +59,8 @@ def load_data_from_url(location: str):
 
                 load_radiance_image(location, capture_url, capture_name, soup)
 
+                load_cloud_labels(location, capture_url, capture_name)
+
                 all_metadata.append(metadata)
 
             except requests.exceptions.RequestException as e:
@@ -118,3 +120,16 @@ def load_radiance_image(location: str, url: str, capture_name: str, soup: Beauti
         with open(os.path.join(DATA_DIR, location, "radiance", capture_name + ".png"), "wb") as f:
             f.write(image)
         print(f"Saved image to {os.path.join(DATA_DIR, location, 'radiance', capture_name + '.png')}")
+
+def load_cloud_labels(location: str, url: str, capture_name: str):
+    os.makedirs(os.path.join(DATA_DIR, location, "cloud_labels"), exist_ok=True)
+
+    # Save cloud labels image
+    cloud_url = urljoin(url, "processing-temp/sea-land-cloud.labels")
+    response = requests.get(cloud_url, timeout=30)
+    response.raise_for_status()
+
+    cloud_labels = response.content
+    with open(os.path.join(DATA_DIR, location, "cloud_labels", capture_name + ".labels"), "wb") as f:
+        f.write(cloud_labels)
+    print(f"Saved cloud labels to {os.path.join(DATA_DIR, location, 'cloud_labels', capture_name + '.labels')}")
