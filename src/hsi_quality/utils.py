@@ -11,7 +11,7 @@ def convert_timestamp(timestamp: str) -> str:
 
     return timestamp
 
-def get_longitude_latitude(satobj: Hypso2, x: int, y: int) -> tuple[float, float]:
+def get_longitude_latitude(satobj: Hypso2, y: int, x: int) -> tuple[float, float]:
     longitude = satobj.longitudes_direct[y][x]
     latitude = satobj.latitudes_direct[y][x]
 

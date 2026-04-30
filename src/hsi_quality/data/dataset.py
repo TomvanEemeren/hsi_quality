@@ -47,22 +47,26 @@ class Dataset:
     def __len__(self):
         return len(self.df)
     
-    def __getitem__(self, idx):
-        row = self.df.iloc[idx]
+    def __getitem__(self, key):
+        if isinstance(key, str):
+            return self.df[key]
+        
+        elif isinstance(key, int):
+            row = self.df.iloc[key]
 
-        # Get metadata for the capture
-        target = row["location_description"]
-        timestamp = row["timestamp_acquired_string"]
-        timestamp = convert_timestamp(timestamp)
+            # Get metadata for the capture
+            target = row["location_description"]
+            timestamp = row["timestamp_acquired_string"]
+            timestamp = convert_timestamp(timestamp)
 
-        # Create the path to the netcdf file
-        file_name = f"{target}_{timestamp}-{self.level}.nc"
-        path = f"datasets/{target}/{self.data_dir}/{file_name}"
+            # Create the path to the netcdf file
+            file_name = f"{target}_{timestamp}-{self.level}.nc"
+            path = f"datasets/{target}/{self.data_dir}/{file_name}"
 
-        # Load the capture
-        satobj = self._load_capture(path)
+            # Load the capture
+            satobj = self._load_capture(path)
 
-        return satobj
+            return satobj
     
     def _load_capture(self, path: str):
 
