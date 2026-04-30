@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import pandas as pd
 from pathlib import Path
 
@@ -35,7 +36,7 @@ class Dataset:
         write_l1d_nc_file(satobj=satobj, l1d_path=l1d_path, overwrite=True)
 
     def remove_capture(self, satobj: Hypso2):
-        row = self.df[self.df["timestamp_acquired"] == satobj.unixtime].iloc[0]
+        row = self.df[np.isclose(self.df["timestamp_acquired"], satobj.unixtime)].iloc[0]
         self.df.drop(row.name, inplace=True)
 
     def save_metadata(self, target: str, name: str = "metadata.csv"):
