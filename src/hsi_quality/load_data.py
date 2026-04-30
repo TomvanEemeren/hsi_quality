@@ -24,7 +24,9 @@ def load_data_from_url(location: str):
     os.makedirs(os.path.join(DATA_DIR, location, "raw"), exist_ok=True)
 
     raw_dir = os.path.join(DATA_DIR, location, "raw")
-    existing_files = set(os.listdir(raw_dir)) if os.path.exists(raw_dir) else set()
+    existing_files = {
+        Path(filename).stem.removesuffix("-l1a") for filename in os.listdir(raw_dir)
+    } if os.path.exists(raw_dir) else set()
 
     # Open the URL to main directory of a location
     url = f"http://129.241.2.147:8009/{location}/"
