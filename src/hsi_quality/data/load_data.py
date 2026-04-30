@@ -5,7 +5,7 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = Path(__file__).resolve().parents[3]
 DATA_DIR = os.path.join(ROOT_DIR, "datasets")
 
 def load_data_from_url(location: str):
@@ -24,10 +24,11 @@ def load_data_from_url(location: str):
     os.makedirs(os.path.join(DATA_DIR, location, "raw"), exist_ok=True)
 
     raw_dir = os.path.join(DATA_DIR, location, "raw")
+    print(os.listdir(raw_dir))
     existing_files = {
         Path(filename).stem.removesuffix("-l1a") for filename in os.listdir(raw_dir)
     } if os.path.exists(raw_dir) else set()
-
+    print(f"Found {len(existing_files)} existing raw files in {raw_dir}.")
     # Open the URL to main directory of a location
     url = f"http://129.241.2.147:8009/{location}/"
     response = requests.get(url, timeout=30)

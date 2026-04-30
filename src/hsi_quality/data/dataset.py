@@ -7,7 +7,7 @@ from hypso import Hypso2
 from hypso.write import write_l1d_nc_file
 from hsi_quality.utils import convert_timestamp
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = Path(__file__).resolve().parents[3]
 DATA_DIR = os.path.join(ROOT_DIR, "datasets")
 
 class Dataset:

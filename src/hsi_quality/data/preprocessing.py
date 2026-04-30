@@ -7,7 +7,7 @@ from pathlib import Path
 from hypso import Hypso2
 from hsi_quality.data import Dataset
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = Path(__file__).resolve().parents[3]
 DATA_DIR = os.path.join(ROOT_DIR, "datasets")
 
 class Pipeline:
