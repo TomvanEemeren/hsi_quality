@@ -4,9 +4,7 @@ import pandas as pd
 import xarray as xr
 from pathlib import Path
 
-from hsi_quality import dataset
 from hypso import Hypso2
-from hsi_quality.utils import convert_timestamp
 from hsi_quality.dataset import Dataset
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
