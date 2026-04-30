@@ -1,30 +1,55 @@
+import os
 import pandas as pd
+from pathlib import Path
 
 from hypso import Hypso2
+from hypso.write import write_l1d_nc_file
 from hsi_quality.utils import convert_timestamp
 
+ROOT_DIR = Path(__file__).resolve().parents[2]
+DATA_DIR = os.path.join(ROOT_DIR, "datasets")
+
 class Dataset:
-    def __init__(self, dataframe: pd.DataFrame):
+    def __init__(self, dataframe: pd.DataFrame, data_dir: str = "reflectance", level: str = "l1d"):
         self.df = dataframe
+        self.data_dir = data_dir
+        self.level = level
 
     def get_capture(self, target: str, timestamp: str):
         # Create the path to the netcdf file
-        file_name = f"{target}_{timestamp}-l1d.nc"
-        path = f"datasets/{target}/processed/{file_name}"
+        file_name = f"{target}_{timestamp}-{self.level}.nc"
+        path = f"datasets/{target}/{self.data_dir}/{file_name}"
 
         # Load the capture
-        satobj = self._load_nc_file(path)
+        satobj = self._load_capture(path)
 
         return satobj
+
+    def store_capture(self, satobj: Hypso2, target: str, capture_name: str):
+        # Check if data directory exists, if not create it
+        os.makedirs(os.path.join(DATA_DIR,target,self.data_dir), exist_ok=True)
+
+        # Save the capture
+        nc_file = f"{capture_name}-{self.level}.nc"
+        l1d_path = os.path.join(DATA_DIR,target,self.data_dir,nc_file)
+        write_l1d_nc_file(satobj=satobj, l1d_path=l1d_path, overwrite=True)
+
+    def remove_capture(self, satobj: Hypso2):
+        row = self.df[self.df["timestamp_acquired"] == satobj.unix_time].iloc[0]
+        self.df.drop(row.name, inplace=True)
+
+    def save_metadata(self, target: str, name: str = "metadata.csv"):
+        metadata_path = os.path.join(DATA_DIR, target, name)
+        self.df.to_csv(metadata_path, index=False)
 
     def filter(self, func):
         mask = self.df.apply(func, axis=1)
         filtered_df = self.df.loc[mask]
-        return Dataset(filtered_df)
+        return Dataset(filtered_df, data_dir=self.data_dir)
 
     def sort(self, by: str):
         sorted_df = self.df.sort_values(by=by)
-        return Dataset(sorted_df)
+        return Dataset(sorted_df, data_dir=self.data_dir)
 
     def __len__(self):
         return len(self.df)
@@ -38,15 +63,15 @@ class Dataset:
         timestamp = convert_timestamp(timestamp)
 
         # Create the path to the netcdf file
-        file_name = f"{target}_{timestamp}-l1d.nc"
-        path = f"datasets/{target}/processed/{file_name}"
+        file_name = f"{target}_{timestamp}-{self.level}.nc"
+        path = f"datasets/{target}/{self.data_dir}/{file_name}"
 
         # Load the capture
-        satobj = self._load_nc_file(path)
+        satobj = self._load_capture(path)
 
         return satobj
 
-    def _load_nc_file(self, path: str):
+    def _load_capture(self, path: str):
 
         # Load the data and store it in a Hypso2 object
         satobj = Hypso2(path=path, verbose=False)

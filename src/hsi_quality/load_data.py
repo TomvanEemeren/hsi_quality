@@ -4,7 +4,6 @@ import requests
 import pandas as pd
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-from datetime import datetime, timezone
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = os.path.join(ROOT_DIR, "datasets")
@@ -97,7 +96,7 @@ def load_raw_data(location: str, url: str, capture_name: str, soup: BeautifulSou
         with requests.get(raw_url, timeout=60, stream=True) as raw_response:
                             raw_response.raise_for_status()
                             with open(tmp_path, "wb") as f:
-                                for chunk in raw_response.iter_content(chunk_size=8 * 1024 * 1024):  # 8 MB chunks
+                                for chunk in raw_response.iter_content(chunk_size=1024 * 1024):  # 1 MB chunks
                                     if chunk:
                                         f.write(chunk)
 
