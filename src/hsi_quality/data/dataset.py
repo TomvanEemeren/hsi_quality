@@ -35,14 +35,6 @@ class Dataset:
         l1d_path = os.path.join(DATA_DIR,target,dir,nc_file)
         write_l1d_nc_file(satobj=satobj, l1d_path=l1d_path, overwrite=True)
 
-    def remove_capture(self, satobj: Hypso2):
-        row = self.df[np.isclose(self.df["timestamp_acquired"], satobj.unixtime)].iloc[0]
-        self.df.drop(row.name, inplace=True)
-
-    def save_metadata(self, target: str, name: str = "metadata.csv"):
-        metadata_path = os.path.join(DATA_DIR, target, name)
-        self.df.to_csv(metadata_path, index=False)
-
     def filter(self, func):
         mask = self.df.apply(func, axis=1)
         filtered_df = self.df.loc[mask]
@@ -71,7 +63,7 @@ class Dataset:
         satobj = self._load_capture(path)
 
         return satobj
-
+    
     def _load_capture(self, path: str):
 
         # Load the data and store it in a Hypso2 object

@@ -5,7 +5,7 @@ import xarray as xr
 from pathlib import Path
 
 from hypso import Hypso2
-from hsi_quality.dataset import Dataset
+from hsi_quality.data import Dataset
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = os.path.join(ROOT_DIR, "datasets")
@@ -113,6 +113,7 @@ def preprocess_data(target: str, dir: str = "processed", full: bool = True):
     pipeline = Pipeline(full=full)
 
     # Iterate through Hypso-2 captures
+    clean_rows = []
     for idx in range(len(raw_dataset)):
         satobj = raw_dataset[idx]
 
@@ -120,10 +121,10 @@ def preprocess_data(target: str, dir: str = "processed", full: bool = True):
 
         if not has_error:
             raw_dataset.store_capture(satobj, target, satobj.capture_name, dir=dir, level="l1d")
-        else:
-            raw_dataset.remove_capture(satobj)
+            clean_rows.append(metadata.iloc[idx])
 
-    raw_dataset.save_metadata(target, name="clean_metadata.csv")
+    clean_metadata = pd.DataFrame(clean_rows)
+    clean_metadata.to_csv(os.path.join(DATA_DIR, target, dir, "clean_metadata.csv"), index=False)
 
 def crop_hyperspectral_image(satobj_h2: Hypso2, x1: int, x2: int, y1: int, y2: int) -> xr.DataArray:
     l1d_cube = satobj_h2.l1d_cube
