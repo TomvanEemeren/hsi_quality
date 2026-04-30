@@ -15,6 +15,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--location", type=str, default="dubai", help="Name of the target.")
     parser.add_argument("--full", action="store_true", help="Whether to apply full preprocessing pipeline.")
+    parser.add_argument("--directory", type=str, default="processed", help="Directory to store the processed data.")
     
     args = parser.parse_args()
 
@@ -22,7 +23,7 @@ def main():
     load_data_from_url(args.location)
 
     # Preprocess the data
-    preprocess_data(args.location, full=args.full)
+    preprocess_data(args.location, full=args.full, dir=args.directory)
 
 if __name__ == "__main__":
     main()

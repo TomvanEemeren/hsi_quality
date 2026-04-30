@@ -16,7 +16,7 @@ class Pipeline:
 
     def run(self, satobj: Hypso2, metadata: pd.Series):
         # Find the row of the capture in metadata
-        row = metadata[np.isclose(metadata["timestamp_acquired"], satobj.unix_time)].iloc[0]
+        row = metadata[np.isclose(metadata["timestamp_acquired"], satobj.unixtime)].iloc[0]
 
         areas = metadata["area"].to_numpy()
         aoi = row["area"]
@@ -97,12 +97,13 @@ class Pipeline:
         outlier = abs(aoi - mean) > 2 * std
         return outlier
 
-def preprocess_data(target: str, full: bool = True):
+def preprocess_data(target: str, dir: str = "processed", full: bool = True):
     """
     Preprocess multiple hyperspectral images for a specific target location.
 
     Args:
         target (str): The target location for which to preprocess the data.
+        dir (str): The directory where the processed data will be stored.
         full (bool): Whether to run the full pipeline.
     """
     metadata = pd.read_csv(os.path.join(DATA_DIR, target, "metadata.csv"))
@@ -118,7 +119,7 @@ def preprocess_data(target: str, full: bool = True):
         satobj, has_error = pipeline.run(satobj, metadata)
 
         if not has_error:
-            raw_dataset.store_capture(satobj, target, satobj.capture_name, dir="processed", level="l1d")
+            raw_dataset.store_capture(satobj, target, satobj.capture_name, dir=dir, level="l1d")
         else:
             raw_dataset.remove_capture(satobj)
 
