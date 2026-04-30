@@ -118,7 +118,7 @@ def preprocess_data(target: str, full: bool = True):
         satobj, has_error = pipeline.run(satobj, metadata)
 
         if not has_error:
-            raw_dataset.store_capture(satobj, target, satobj.capture_name)
+            raw_dataset.store_capture(satobj, target, satobj.capture_name, dir="processed", level="l1d")
         else:
             raw_dataset.remove_capture(satobj)
 

@@ -25,13 +25,13 @@ class Dataset:
 
         return satobj
 
-    def store_capture(self, satobj: Hypso2, target: str, capture_name: str):
+    def store_capture(self, satobj: Hypso2, target: str, capture_name: str, dir: str = "processed", level: str = "l1d"):
         # Check if data directory exists, if not create it
-        os.makedirs(os.path.join(DATA_DIR,target,self.data_dir), exist_ok=True)
+        os.makedirs(os.path.join(DATA_DIR,target,dir), exist_ok=True)
 
         # Save the capture
-        nc_file = f"{capture_name}-{self.level}.nc"
-        l1d_path = os.path.join(DATA_DIR,target,self.data_dir,nc_file)
+        nc_file = f"{capture_name}-{level}.nc"
+        l1d_path = os.path.join(DATA_DIR,target,dir,nc_file)
         write_l1d_nc_file(satobj=satobj, l1d_path=l1d_path, overwrite=True)
 
     def remove_capture(self, satobj: Hypso2):
@@ -45,11 +45,11 @@ class Dataset:
     def filter(self, func):
         mask = self.df.apply(func, axis=1)
         filtered_df = self.df.loc[mask]
-        return Dataset(filtered_df, data_dir=self.data_dir)
+        return Dataset(filtered_df, data_dir=self.data_dir, level=self.level)
 
     def sort(self, by: str):
         sorted_df = self.df.sort_values(by=by)
-        return Dataset(sorted_df, data_dir=self.data_dir)
+        return Dataset(sorted_df, data_dir=self.data_dir, level=self.level)
 
     def __len__(self):
         return len(self.df)
