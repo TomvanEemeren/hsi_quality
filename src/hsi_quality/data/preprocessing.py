@@ -131,11 +131,3 @@ def preprocess_data(target: str, dir: str = "processed", full: bool = True):
 
     clean_metadata = pd.DataFrame(clean_rows)
     clean_metadata.to_csv(os.path.join(DATA_DIR, target, dir, "clean_metadata.csv"), index=False)
-
-def crop_hyperspectral_image(satobj_h2: Hypso2, x1: int, x2: int, y1: int, y2: int) -> xr.DataArray:
-    l1d_cube = satobj_h2.l1d_cube
-
-    # Crop the image to the specified pixel coordinates
-    cropped_cube = l1d_cube[y1:y2, x1:x2, :]
-
-    return cropped_cube

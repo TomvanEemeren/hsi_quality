@@ -49,7 +49,7 @@ class Dataset:
     
     def __getitem__(self, key):
         if isinstance(key, str):
-            return self.df[key]
+            return self.df[key].reset_index(drop=True)
         
         elif isinstance(key, int):
             row = self.df.iloc[key]
