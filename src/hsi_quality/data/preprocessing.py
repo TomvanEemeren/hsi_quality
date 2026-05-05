@@ -118,7 +118,7 @@ def preprocess_data(target: str, dir: str = "processed", full: bool = True):
 
     pipeline = Pipeline(full=full)
 
-    processed_dataset = ProcessedDataset(target, dir=dir)
+    processed_dataset = ProcessedDataset(target, data_dir=dir)
 
     # Iterate through Hypso-2 captures
     clean_rows = []
