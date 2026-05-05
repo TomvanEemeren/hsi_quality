@@ -63,6 +63,8 @@ def load_data_from_url(location: str):
 
                 load_cloud_labels(location, capture_url, capture_name)
 
+                load_lonlats_indirect(location, capture_url, capture_name)
+
                 all_metadata.append(metadata)
 
             except requests.exceptions.RequestException as e:
@@ -135,3 +137,27 @@ def load_cloud_labels(location: str, url: str, capture_name: str):
     with open(os.path.join(DATA_DIR, location, "cloud_labels", capture_name + ".labels"), "wb") as f:
         f.write(cloud_labels)
     print(f"Saved cloud labels to {os.path.join(DATA_DIR, location, 'cloud_labels', capture_name + '.labels')}")
+
+def load_lonlats_indirect(location: str, url: str, capture_name: str):
+    os.makedirs(os.path.join(DATA_DIR, location, "latitudes_indirect"), exist_ok=True)
+    os.makedirs(os.path.join(DATA_DIR, location, "longitudes_indirect"), exist_ok=True)
+
+    # Save latitudes and longitudes
+    latitudes_url = urljoin(url, "processing-temp/latitudes_indirectgeoref.dat")
+    longitudes_url = urljoin(url, "processing-temp/longitudes_indirectgeoref.dat")
+
+    response = requests.get(latitudes_url, timeout=30)
+    response.raise_for_status()
+    latitudes = response.content
+
+    response = requests.get(longitudes_url, timeout=30)
+    response.raise_for_status()
+    longitudes = response.content
+
+    with open(os.path.join(DATA_DIR, location, "latitudes_indirect", capture_name + ".dat"), "wb") as f:
+        f.write(latitudes)
+    print(f"Saved latitudes to {os.path.join(DATA_DIR, location, 'latitudes_indirect', capture_name + '.dat')}")
+
+    with open(os.path.join(DATA_DIR, location, "longitudes_indirect", capture_name + ".dat"), "wb") as f:
+        f.write(longitudes)
+    print(f"Saved longitudes to {os.path.join(DATA_DIR, location, 'longitudes_indirect', capture_name + '.dat')}")
