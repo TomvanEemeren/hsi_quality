@@ -1,5 +1,5 @@
 import os
-from matplotlib import path
+import numpy as np
 import pandas as pd
 from pathlib import Path
 
@@ -65,11 +65,15 @@ class RawDataset(Dataset):
         path = f"datasets/{target}/{self.data_dir}/{capture_name}-{self.level}.nc"
         satobj = Hypso2(path=path, verbose=False)
 
+        # Load the latitudes obtained from indirect georeferencing
         path = f"datasets/{target}/latitudes_indirect/{capture_name}.dat"
-        satobj.latitudes = pd.read_csv(path, header=None).to_numpy()
+        latitudes = np.fromfile(path, dtype=np.float32)
+        satobj.latitudes = latitudes.reshape(satobj.spatial_dimensions)
 
+        # Load the longitudes obtained from indirect georeferencing
         path = f"datasets/{target}/longitudes_indirect/{capture_name}.dat"
-        satobj.longitudes = pd.read_csv(path, header=None).to_numpy()
+        longitudes = np.fromfile(path, dtype=np.float32)
+        satobj.longitudes = longitudes.reshape(satobj.spatial_dimensions)
 
         return satobj
 

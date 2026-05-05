@@ -12,13 +12,13 @@ sys.path.append(path)
 
 # %%
 import pandas as pd
-from hsi_quality.data import Dataset
+from hsi_quality.data import ProcessedDataset
 
 # Load the metadata corresponding to a dataset
 metadata = pd.read_csv("datasets/dubai/cleaned/clean_metadata.csv")
 
 # Load the dataset object
-dataset = Dataset(metadata, data_dir="cleaned")
+dataset = ProcessedDataset(metadata, data_dir="cleaned")
 
 # %%
 from hsi_quality.visualize import plot_rgb

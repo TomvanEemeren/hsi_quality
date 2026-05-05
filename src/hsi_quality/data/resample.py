@@ -2,7 +2,6 @@
 import numpy as np
 import xarray as xr
 from pyproj import Proj
-import dask.array as da
 from shapely.geometry import Polygon
 from matplotlib import pyplot as plt
 from pyresample import kd_tree, geometry
@@ -14,9 +13,9 @@ def intersect_captures(dataset, zone: int, visualize: bool = False) -> Polygon:
     p = Proj(proj='utm', zone=zone, ellps='WGS84', datum='WGS84', preserve_units=False)
 
     for idx, satobj in enumerate(dataset):
-        latitudes = satobj.latitudes_direct
-        longitudes = satobj.longitudes_direct
-        
+        latitudes = satobj.latitudes
+        longitudes = satobj.longitudes
+
         xs, ys = p(longitudes, latitudes)
 
         boundary = np.concatenate([
@@ -55,8 +54,8 @@ def generate_area_def(area_id: str, proj_id: str, description: str, bbox: tuple[
 def resample_capture(satobj, area_def):
     data = satobj.l1d_cube
 
-    latitudes = satobj.latitudes_direct
-    longitudes = satobj.longitudes_direct 
+    latitudes = satobj.latitudes
+    longitudes = satobj.longitudes
 
     swath_def = SwathDefinition(lons=longitudes, lats=latitudes)
 
