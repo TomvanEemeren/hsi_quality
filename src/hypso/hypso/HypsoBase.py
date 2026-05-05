@@ -1150,7 +1150,8 @@ class HypsoBase:
         if self.l1b_cube is None:
             self.generate_l1b_cube(coeff_type=coeff_type, **kwargs)
         
-        self.run_direct_georeferencing()
+        # Passing the latitudes and longitudes this way works for now, but should be refactored in the future
+        self.run_georeferencing(latitudes=self.latitudes, longitudes=self.longitudes)
         
         return None
 

@@ -5,7 +5,7 @@ import xarray as xr
 from pathlib import Path
 
 from hypso import Hypso2
-from hsi_quality.data import Dataset
+from hsi_quality.data import RawDataset, ProcessedDataset
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 DATA_DIR = os.path.join(ROOT_DIR, "datasets")
@@ -31,8 +31,8 @@ class Pipeline:
         if self.full:
             cube, latitudes, longitudes = self.flip_hyperspectral_image(satobj)
             satobj.l1d_cube = cube
-            satobj.latitudes_direct = latitudes
-            satobj.longitudes_direct = longitudes
+            satobj.latitudes = latitudes
+            satobj.longitudes = longitudes
 
             # Check for errors in the capture
             outlier = self.detect_outliers(aoi, areas)
@@ -49,11 +49,11 @@ class Pipeline:
 
     def flip_hyperspectral_image(self, satobj: Hypso2):
         l1d_cube = satobj.l1d_cube
-        latitudes = satobj.latitudes_direct
-        longitudes = satobj.longitudes_direct
+        latitudes = satobj.latitudes
+        longitudes = satobj.longitudes
 
         # Flip the image to always have same orientation
-        if satobj.longitudes_direct[0][0] > satobj.longitudes_direct[0][-1]:
+        if satobj.longitudes[0][0] > satobj.longitudes[0][-1]:
             flipped_latitudes = latitudes[:, ::-1]
             flipped_longitudes = longitudes[:, ::-1]
             flipped_cube = l1d_cube[:, ::-1, :]
@@ -114,9 +114,11 @@ def preprocess_data(target: str, dir: str = "processed", full: bool = True):
     """
     metadata = pd.read_csv(os.path.join(DATA_DIR, target, "metadata.csv"))
 
-    raw_dataset = Dataset(metadata, data_dir="raw", level="l1a")
+    raw_dataset = RawDataset(metadata)
 
     pipeline = Pipeline(full=full)
+
+    processed_dataset = ProcessedDataset(target, dir=dir)
 
     # Iterate through Hypso-2 captures
     clean_rows = []
@@ -126,7 +128,7 @@ def preprocess_data(target: str, dir: str = "processed", full: bool = True):
         satobj, has_error = pipeline.run(satobj, metadata)
 
         if not has_error:
-            raw_dataset.store_capture(satobj, target, satobj.capture_name, dir=dir, level="l1d")
+            processed_dataset.store_capture(satobj, target)
             clean_rows.append(metadata.iloc[idx])
 
     clean_metadata = pd.DataFrame(clean_rows)
