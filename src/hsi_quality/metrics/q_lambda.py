@@ -1,41 +1,46 @@
-import torch
-import torch.nn.functional as F
+import numpy as np
+from scipy.ndimage import convolve1d
 
 def calculate_q_lambda(X, Y, size=11):
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    X = torch.from_numpy(X.values).float().to(device)
-    Y = torch.from_numpy(Y.values).float().to(device)
+    # Convert to numpy arrays of shape (Height, Width, Channels) = (H, W, Q)
+    X = np.asarray(X.values, dtype=np.float32)
+    Y = np.asarray(Y.values, dtype=np.float32)
 
     H, W, Q = X.shape
     N = H * W
 
-    # Input of shape (mini_batch, channels, length) = (N, 1, Q)
-    X = X.reshape(N, Q).unsqueeze(1)  
-    Y = Y.reshape(N, Q).unsqueeze(1)
-    
-    kernel = torch.ones((1, 1, size), device=device) / size
+    # Flatten the spatial dimensions
+    X = X.reshape(N, Q)
+    Y = Y.reshape(N, Q)
 
-    muX = F.conv1d(X, kernel, padding="same")
-    muY = F.conv1d(Y, kernel, padding="same")
+    # Create uniform window
+    kernel = np.ones(size) / size
+
+    # Calculate local means
+    muX = convolve1d(X, kernel, axis=1, mode="constant", cval=0.0)
+    muY = convolve1d(Y, kernel, axis=1, mode="constant", cval=0.0)
 
     muX_sq = muX ** 2
     muY_sq = muY ** 2
 
-    varX = F.conv1d(X * X, kernel, padding="same") - muX_sq
-    varY = F.conv1d(Y * Y, kernel, padding="same") - muY_sq
-    covXY = F.conv1d(X * Y, kernel, padding="same") - muX * muY
+    # Calculate variances and covariance
+    varX = convolve1d(X * X, kernel, axis=1, mode="constant", cval=0.0) - muX_sq
+    varY = convolve1d(Y * Y, kernel, axis=1, mode="constant", cval=0.0) - muY_sq
+    covXY = convolve1d(X * Y, kernel, axis=1, mode="constant", cval=0.0) - muX * muY
 
-    varX = torch.clamp(varX, min=0.0)
-    varY = torch.clamp(varY, min=0.0)
+    # Numerical instability can make some variances negative
+    varX = np.maximum(varX, 0)
+    varY = np.maximum(varY, 0)
 
-    ssim = (4 * covXY * muX * muY) / ((varX + varY) * (muX_sq + muY_sq) + 1e-8)
+    # Calculate SSIM across spectral dimension
+    ssim_values = (4 * covXY * muX * muY) / ((varX + varY) * (muX_sq + muY_sq) + 1e-8)
 
-    ssim_score = ssim.mean(dim=-1).squeeze(1)
-    ssim_score = ssim_score.reshape(H, W)
+    # Calculate SSIM score per pixel
+    ssim_score = np.mean(ssim_values, axis=1)
 
-    q_lambda = ssim_score.min()
+    # Take the minimum over all pixels
+    q_lambda = np.min(ssim_score)
 
-    return q_lambda.cpu().numpy()
+    return q_lambda
     

@@ -1,60 +1,57 @@
-import torch
-import torch.nn.functional as F
+import numpy as np
+from scipy.ndimage import uniform_filter
 
 def calculate_mean_ssim(X, Y, size=11, alpha=1, beta=1, gamma=1):
     C1 = 0.01**2
     C2 = 0.03**2
     C3 = C2 / 2
 
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    # Convert to numpy arrays of shape (Height, Width, Channels) = (H, W, Q)
+    X = np.asarray(X.values, dtype=np.float32)
+    Y = np.asarray(Y.values, dtype=np.float32)
 
-    # Convert to torch tensors
-    X = torch.from_numpy(X.values).float().to(device)
-    Y = torch.from_numpy(Y.values).float().to(device)
+    # Number of pixels in the window
+    N = size * size
 
-    # Reshape to (1, Q, H, W)
-    X = X.permute(2, 0, 1).unsqueeze(0)
-    Y = Y.permute(2, 0, 1).unsqueeze(0)
-
-    Q = X.shape[1]
-
-    # Create uniform window
-    window = torch.ones((Q, 1, size, size)) / (size * size)
-    window = window.to(device)
-
-    # Compute the local means by sliding a window per band
-    muX = F.conv2d(X, window, padding="same", groups=Q)
-    muY = F.conv2d(Y, window, padding="same", groups=Q)
+    # Compute the local means by sliding a window per channel
+    muX = uniform_filter(X, size=(size, size, 1), mode="constant", cval=0.0)
+    muY = uniform_filter(Y, size=(size, size, 1), mode="constant", cval=0.0)
 
     muX_sq = muX ** 2
     muY_sq = muY ** 2
     muX_muY = muX * muY
 
-    # Compute the variances and covariance per band
-    sigmaX = F.conv2d(X * X, window, padding="same", groups=Q) - muX_sq
-    sigmaY = F.conv2d(Y * Y, window, padding="same", groups=Q) - muY_sq
-    sigmaXY = F.conv2d(X * Y, window, padding="same", groups=Q) - muX_muY
+    # Compute the variances and covariance per channel
+    varX = uniform_filter(X * X, size=(size, size, 1), mode="constant", cval=0.0) - muX_sq
+    varY = uniform_filter(Y * Y, size=(size, size, 1), mode="constant", cval=0.0) - muY_sq
+    covXY = uniform_filter(X * Y, size=(size, size, 1), mode="constant", cval=0.0) - muX_muY
 
-    # Numerical instability makes some variances negative
-    sigmaX = torch.clamp(sigmaX, min=0.0)
-    sigmaY = torch.clamp(sigmaY, min=0.0)
+    # Numerical instability can make some variances negative
+    varX = np.maximum(varX, 0)
+    varY = np.maximum(varY, 0)
+
+    # Multiply by factor to get sample covariance
+    factor = N / (N - 1)
+    varX *= factor
+    varY *= factor
+    covXY *= factor
 
     # Luminance
     l = (2 * muX_muY + C1) / (muX_sq + muY_sq + C1)
     
     # Contrast
-    c = (2 * torch.sqrt(sigmaX * sigmaY) + C2) / (sigmaX + sigmaY + C2)
+    c = (2 * np.sqrt(varX) * np.sqrt(varY) + C2) / (varX + varY + C2)
 
     # Structure
-    s = (sigmaXY + C3) / (torch.sqrt(sigmaX * sigmaY) + C3)
+    s = (covXY + C3) / (np.sqrt(varX) * np.sqrt(varY) + C3)
 
-    # Calculate the SSIM index per band
+    # Calculate the SSIM index per channel
     ssim = (l ** alpha) * (c ** beta) * (s ** gamma)
 
-    # Average over bands
-    mean_ssim = ssim.mean(dim=1)
+    # Average over channels
+    mean_ssim = np.mean(ssim, axis=2)
 
     # Average over all mean SSIM values
-    mean_ssim_score = mean_ssim.mean()
+    mean_ssim_score = np.mean(mean_ssim)
 
-    return mean_ssim_score.cpu().numpy()
+    return mean_ssim_score
