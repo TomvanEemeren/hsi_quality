@@ -16,7 +16,7 @@ def store_capture(satobj: Hypso2, row: pd.Series, dir: str = "processed"):
     file_path = os.path.join(base_path, f"{satobj.capture_name}-l1d.h5")
 
     with h5py.File(file_path, "w") as f:
-        f.create_dataset("l1d_cube", data=satobj.l1d_cube, compression="gzip")
+        f.create_dataset("l1d_cube", data=satobj.l1d_cube.to_numpy(), compression="gzip")
         f.create_dataset("latitudes", data=satobj.latitudes, compression="gzip")
         f.create_dataset("longitudes", data=satobj.longitudes, compression="gzip")
         f.attrs["name"] = satobj.capture_name
