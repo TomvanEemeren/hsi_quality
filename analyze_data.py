@@ -21,7 +21,7 @@ metadata = pd.read_csv("datasets/dubai/cleaned/clean_metadata.csv")
 dataset = ProcessedDataset(metadata, data_dir="cleaned")
 
 # %%
-from hsi_quality.visualize import plot_rgb
+from hsi_quality.analysis import plot_rgb
 
 # Sort by date
 dataset = dataset.sort(by="timestamp_acquired")
@@ -33,7 +33,7 @@ for idx in range(len(dataset)):
     image = plot_rgb(satobj, save=True, verbose=False)
 
 # %%
-from hsi_quality.data import generate_area_def, resample_data
+from hsi_quality.analysis import generate_area_def, resample_data
 
 # Sort by off-nadir angle
 dataset = dataset.sort(by="off_nadir")

@@ -7,7 +7,9 @@ from matplotlib import pyplot as plt
 from pyresample import kd_tree, geometry
 from pyresample.geometry import SwathDefinition
 
-def intersect_captures(dataset, zone: int, visualize: bool = False) -> Polygon:
+from hsi_quality.data import ProcessedDataset
+
+def intersect_captures(dataset, zone: int, visualize: bool = False, bbox: tuple[float, float, float, float] = None) -> Polygon:
 
     # Define projection and datum for mapping 3D coordinates to 2D plane
     p = Proj(proj='utm', zone=zone, ellps='WGS84', datum='WGS84', preserve_units=False)
@@ -35,6 +37,9 @@ def intersect_captures(dataset, zone: int, visualize: bool = False) -> Polygon:
     if visualize:
         plt.figure(figsize=(5, 5))
         plt.plot(*overlap.exterior.xy)
+        if bbox is not None:
+            box = Polygon([(bbox[0], bbox[1]), (bbox[2], bbox[1]), (bbox[2], bbox[3]), (bbox[0], bbox[3])])
+            plt.plot(*box.exterior.xy, color='red')
         plt.ticklabel_format(style='sci', axis='both', scilimits=(0, 0))
         plt.show()
 
@@ -65,11 +70,12 @@ def resample_capture(satobj, area_def):
 
     return resampled_capture
 
-def resample_data(dataset, area_def):
+def resample_data(dataset: ProcessedDataset, area_def: geometry.AreaDefinition) -> list[xr.DataArray]:
     resampled_data = []
 
-    for satobj in dataset:
+    for _, (satobj, row) in enumerate(dataset):
         resampled_capture = resample_capture(satobj, area_def)
+        resampled_capture.attrs.update({"off_nadir": row["off_nadir"]})
         resampled_data.append(resampled_capture)
 
     return resampled_data

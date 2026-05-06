@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from hypso import Hypso2
 from hypso.spectral_analysis import get_closest_wavelength_index
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = Path(__file__).resolve().parents[3]
 DATA_DIR = os.path.join(ROOT_DIR, "datasets")
 
 def plot_rgb(satobj_h2: Hypso2, save: bool = False, verbose: bool = False) -> np.ndarray:

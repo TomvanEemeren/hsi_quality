@@ -5,7 +5,7 @@ import xarray as xr
 from pathlib import Path
 
 from hypso import Hypso2
-from hsi_quality.data import RawDataset, ProcessedDataset
+from hsi_quality.data import RawDataset
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 DATA_DIR = os.path.join(ROOT_DIR, "datasets")
@@ -14,11 +14,7 @@ class Pipeline:
     def __init__(self, full: bool = True):
         self.full = full
 
-    def run(self, satobj: Hypso2, metadata: pd.Series):
-        # Find the row of the capture in metadata
-        row = metadata[np.isclose(metadata["timestamp_acquired"], satobj.unixtime)].iloc[0]
-
-        areas = metadata["area"].to_numpy()
+    def run(self, satobj: Hypso2, row: pd.Series, areas: np.ndarray):
         aoi = row["area"]
         smear_error = False
         rainbow_error = False
@@ -118,18 +114,33 @@ def preprocess_data(target: str, dir: str = "processed", full: bool = True):
 
     pipeline = Pipeline(full=full)
 
-    processed_dataset = ProcessedDataset(target, data_dir=dir)
+    areas = metadata["area"].to_numpy()
 
     # Iterate through Hypso-2 captures
     clean_rows = []
-    for idx in range(len(raw_dataset)):
-        satobj = raw_dataset[idx]
+    for _, (satobj, row) in enumerate(raw_dataset):
 
-        satobj, has_error = pipeline.run(satobj, metadata)
+        satobj, has_error = pipeline.run(satobj, row, areas)
 
         if not has_error:
-            processed_dataset.store_capture(satobj, target)
-            clean_rows.append(metadata.iloc[idx])
+            store_capture(satobj, target, dir)
+            clean_rows.append(row)
 
     clean_metadata = pd.DataFrame(clean_rows)
     clean_metadata.to_csv(os.path.join(DATA_DIR, target, dir, "clean_metadata.csv"), index=False)
+
+def store_capture(satobj: Hypso2, target: str, dir: str = "processed"):
+    base_path = os.path.join(DATA_DIR,target,dir)
+    os.makedirs(base_path, exist_ok=True)
+
+    file_path = os.path.join(base_path, f"{satobj.capture_name}-l1d.npz")
+
+    np.savez_compressed(
+        file_path,
+        cube=satobj.l1d_cube,
+        capture_name=satobj.capture_name,
+        longitudes=satobj.longitudes,
+        latitudes=satobj.latitudes,
+        off_nadir=satobj.off_nadir,
+        wavelengths=satobj.wavelengths
+    )
