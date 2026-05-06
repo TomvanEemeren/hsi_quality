@@ -5,7 +5,8 @@ import xarray as xr
 from pathlib import Path
 
 from hypso import Hypso2
-from hsi_quality.data import RawDataset, store_capture
+from hsi_quality.data import RawDataset
+from .store_data import store_capture
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 DATA_DIR = os.path.join(ROOT_DIR, "datasets")
