@@ -14,7 +14,7 @@ DATA_DIR = os.path.join(ROOT_DIR, "datasets")
 @dataclass
 class Capture:
     cube: np.ndarray
-    capture_name: str
+    name: str
     longitudes: np.ndarray
     latitudes: np.ndarray
     off_nadir: float
@@ -118,7 +118,7 @@ class ProcessedDataset(Dataset):
 
         capture = Capture(
             cube=data["cube"],
-            capture_name=data["capture_name"].item(),
+            name=data["name"].item(),
             longitudes=data["longitudes"],
             latitudes=data["latitudes"],
             off_nadir=data["off_nadir"].item(),

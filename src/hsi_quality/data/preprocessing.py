@@ -123,14 +123,15 @@ def preprocess_data(target: str, dir: str = "processed", full: bool = True):
         satobj, has_error = pipeline.run(satobj, row, areas)
 
         if not has_error:
-            store_capture(satobj, target, dir)
+            store_capture(satobj, row, dir)
             clean_rows.append(row)
 
     clean_metadata = pd.DataFrame(clean_rows)
     clean_metadata.to_csv(os.path.join(DATA_DIR, target, dir, "clean_metadata.csv"), index=False)
 
-def store_capture(satobj: Hypso2, target: str, dir: str = "processed"):
-    base_path = os.path.join(DATA_DIR,target,dir)
+def store_capture(satobj: Hypso2, row: pd.Series, dir: str = "processed"):
+    target = row["location_description"]
+    base_path = os.path.join(DATA_DIR, target, dir)
     os.makedirs(base_path, exist_ok=True)
 
     file_path = os.path.join(base_path, f"{satobj.capture_name}-l1d.npz")
@@ -138,9 +139,9 @@ def store_capture(satobj: Hypso2, target: str, dir: str = "processed"):
     np.savez_compressed(
         file_path,
         cube=satobj.l1d_cube,
-        capture_name=satobj.capture_name,
+        name=satobj.capture_name,
         longitudes=satobj.longitudes,
         latitudes=satobj.latitudes,
-        off_nadir=satobj.off_nadir,
+        off_nadir=row["off_nadir"],
         wavelengths=satobj.wavelengths
     )
