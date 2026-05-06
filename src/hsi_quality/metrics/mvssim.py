@@ -1,76 +1,63 @@
-import numpy as np
-import xarray as xr
-from tqdm import tqdm
+import torch
+import torch.nn.functional as F
 
-def calculate_mvssim_score(X: xr.DataArray, Y: xr.DataArray, size: int = 11):
-    C1 = 1e-8
-    C2 = 1e-8
-    C3 = 1e-8
+def calculate_mvssim(X, Y, size=11, alpha=1, beta=1, gamma=1):
+    C1 = 0.01**2
+    C2 = 0.03**2
+    C3 = C2 / 2
 
-    alpha = 1
-    beta = 1
-    gamma = 1
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-    Q = X.shape[2]
+    # Convert to torch tensors
+    X = torch.from_numpy(X.values).float().to(device)
+    Y = torch.from_numpy(Y.values).float().to(device)
+
+    # Reshape to (batch, channels, height, width) = (1, Q, H, W)
+    X = X.permute(2, 0, 1).unsqueeze(0)
+    Y = Y.permute(2, 0, 1).unsqueeze(0)
+
+    Q = X.shape[1]
     N = size * size
 
-    X_N = X.reshape(-1, Q)
-    Y_N = Y.reshape(-1, Q)
+    # Create uniform window
+    window = torch.ones((Q, 1, size, size)) / (size * size)
+    window = window.to(device)
 
-    # Calculate the local sample means with 2D convolution
-    mu_X = np.mean(X_N, axis=0)
-    mu_Y = np.mean(Y_N, axis=0)
+    # Compute the local sample means by sliding a window
+    muX = F.conv2d(X, window, padding="same", groups=Q)
+    muY = F.conv2d(Y, window, padding="same", groups=Q)
 
-    mu_X_sq = mu_X ** 2
-    mu_Y_sq = mu_Y ** 2
-    mu_X_mu_Y = mu_X * mu_Y
+    muX_sq = muX ** 2
+    muY_sq = muY ** 2
+    muX_muY = muX * muY
 
-    # Calculate the local sample covariance and cross-covariance
-    Sigma_X = np.cov(X_N, rowvar=False)
-    Sigma_Y = np.cov(Y_N, rowvar=False)
-    Sigma_XY = np.cov(X_N, Y_N, rowvar=False)[:Q, Q:]
+    # Calculate diagonal elements of sample covariance matrix
+    varX = F.conv2d(X * X, window, padding="same", groups=Q) - muX_sq
+    varY = F.conv2d(Y * Y, window, padding="same", groups=Q) - muY_sq
+    covXY = F.conv2d(X * Y, window, padding="same", groups=Q) - muX_muY
 
-    sigma_X = np.diag(Sigma_X)
-    sigma_Y = np.diag(Sigma_Y)
-    sigma_XY = np.diag(Sigma_XY)
+    varX = torch.clamp(varX, min=0)
+    varY = torch.clamp(varY, min=0)
 
-    # Calculate singular values
-    lambda_q = np.linalg.svdvals(Sigma_X)
-    lambda_s = np.sum(lambda_q)
+    varX = varX * (N / (N - 1))
+    varY = varY * (N / (N - 1))
+    covXY = covXY * (N / (N - 1))
 
-    d_q = np.linalg.svdvals(Sigma_Y)
-    d_s = np.sum(d_q)
+    # Nuclear norm can be approximated by trace
+    lambda_s = varX.sum(dim=1)
+    d_s = varY.sum(dim=1)
 
     # Luminance similarity between X and Y
-    l = (2 * np.sum(mu_X_mu_Y, axis=0) + C1) / (np.sum(mu_X_sq, axis=0) + np.sum(mu_Y_sq, axis=0) + C1)
+    l = (2 * muX_muY.sum(dim=1) + C1) / (muX_sq.sum(dim=1) + muY_sq.sum(dim=1) + C1)
 
     # Contrast similarity between X and Y
-    c = (2 * np.sqrt(lambda_s) * np.sqrt(d_s) + C2) / (lambda_s + d_s + C2)
+    c = (2 * torch.sqrt(lambda_s * d_s) + C2) / (lambda_s + d_s + C2)
 
-    # Spatial structural similarity between X and Y
-    s = np.mean((sigma_XY + C3) / (np.sqrt(sigma_X * sigma_Y) + C3))
+    # Spatial structure similarity between X and Y
+    s = ((covXY + C3) / (torch.sqrt(varX * varY) + C3)).mean(dim=1)
 
-    mvssim_score = l**alpha * c**beta * s**gamma
+    mvssim_values = (l ** alpha) * (c ** beta) * (s ** gamma)
 
-    return mvssim_score
+    mvssim_score = mvssim_values.mean()
 
-def calculate_mvssim(X: xr.DataArray, Y: xr.DataArray, size: int = 11):
-    X = X.values
-    Y = Y.values
-
-    H, W, Q = X.shape
-    
-    output_h = H - size + 1
-    output_w = W - size + 1
-
-    output = np.zeros((output_h, output_w))
-    
-    for i in tqdm(range(output_h)):
-        for j in range(output_w):
-            X_patch = X[i:i+size, j:j+size, :]
-            Y_patch = Y[i:i+size, j:j+size, :]
-
-            mvssim_score = calculate_mvssim_score(X_patch, Y_patch, size)
-            output[i, j] = mvssim_score
-
-    return output
+    return mvssim_score.cpu().numpy()
