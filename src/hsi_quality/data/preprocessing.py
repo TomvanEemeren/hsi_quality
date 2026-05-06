@@ -5,7 +5,7 @@ import xarray as xr
 from pathlib import Path
 
 from hypso import Hypso2
-from hsi_quality.data import RawDataset
+from hsi_quality.data import RawDataset, store_capture
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 DATA_DIR = os.path.join(ROOT_DIR, "datasets")
@@ -128,20 +128,3 @@ def preprocess_data(target: str, dir: str = "processed", full: bool = True):
 
     clean_metadata = pd.DataFrame(clean_rows)
     clean_metadata.to_csv(os.path.join(DATA_DIR, target, dir, "clean_metadata.csv"), index=False)
-
-def store_capture(satobj: Hypso2, row: pd.Series, dir: str = "processed"):
-    target = row["location_description"]
-    base_path = os.path.join(DATA_DIR, target, dir)
-    os.makedirs(base_path, exist_ok=True)
-
-    file_path = os.path.join(base_path, f"{satobj.capture_name}-l1d.npz")
-
-    np.savez_compressed(
-        file_path,
-        cube=satobj.l1d_cube,
-        name=satobj.capture_name,
-        longitudes=satobj.longitudes,
-        latitudes=satobj.latitudes,
-        off_nadir=row["off_nadir"],
-        wavelengths=satobj.wavelengths
-    )
