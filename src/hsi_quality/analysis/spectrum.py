@@ -1,16 +1,21 @@
+from pathlib import Path
 from matplotlib import pyplot as plt
 
 from hsi_quality.data import Dataset
 from .resample import Resampler
 
+ROOT_DIR = Path(__file__).resolve().parents[3]
+PLOTS_DIR = ROOT_DIR / "plots"
 
-def plot_spectrum(dataset: Dataset, resampler: Resampler, x: int, y: int):
+
+def plot_spectrum(dataset: Dataset, resampler: Resampler, x: int, y: int, save: bool = False):
+    target = dataset["location_description"].unique()[0]
     cmap = plt.get_cmap("viridis")
 
     dataset = dataset.sort(by="off_nadir")
     max_off_nadir = dataset["off_nadir"].max()
 
-    _, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(10, 6))
     for _, (satobj, metadata) in enumerate(dataset):
         off_nadir = metadata["off_nadir"]
 
@@ -20,9 +25,16 @@ def plot_spectrum(dataset: Dataset, resampler: Resampler, x: int, y: int):
 
         ax.plot(bands, spectrum, label=f"off_nadir: {off_nadir}", color=cmap(off_nadir / max_off_nadir))
 
-        
     ax.set_xlabel("Wavelength (nm)")
     ax.set_ylabel("Reflectance")
     ax.grid(True)
     ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
-    plt.show()
+    if save:
+        base_dir = Path(PLOTS_DIR) / target
+        base_dir.mkdir(parents=True, exist_ok=True)
+        output_path = base_dir / f"spectrum.png"
+        fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
+    else:
+        fig.show()
+
+    plt.close(fig)

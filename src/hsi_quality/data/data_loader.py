@@ -1,4 +1,3 @@
-import os
 import requests
 import pandas as pd
 from pathlib import Path
@@ -6,7 +5,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
-DATA_DIR = os.path.join(ROOT_DIR, "datasets")
+DATA_DIR = ROOT_DIR / "datasets"
 
 
 class DataLoader:

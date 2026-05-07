@@ -1,8 +1,6 @@
-# %%
-
-# Run this first!
 import os
 import sys
+import argparse
 
 path = os.path.abspath(os.path.join(os.getcwd(),"src"))
 sys.path.append(path)
@@ -10,40 +8,35 @@ sys.path.append(path)
 path = os.path.abspath(os.path.join(os.getcwd(),"src","hypso"))
 sys.path.append(path)
 
-# %%
 from hsi_quality.data import Dataset, Storage
+from hsi_quality.analysis import Resampler, plot_metric, plot_band, plot_rgb
+from hsi_quality.metrics import MeanSSIM, MvSSIM, QLambda
 
-loader = Storage(target="dubai", data_dir="cleaned", level="l1d")
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--location", type=str, default="dubai", help="Name of the target.")
+    parser.add_argument("--directory", type=str, default="processed", help="Directory where the processed data is stored.")
+    
+    args = parser.parse_args()
 
-dataset = Dataset(loader=loader)
+    storage = Storage(target=args.location, data_dir=args.directory, level="l1d")
 
-# %%
-from hsi_quality.analysis import plot_rgb
+    dataset = Dataset(storage=storage)
 
-# Sort by date
-dataset = dataset.sort(by="timestamp_acquired")
+    plot_band(dataset, band=40, save=True)
 
-# Iterate through captures and save the RGB images
-for idx in range(len(dataset)):
-    satobj, _ = dataset[idx]
+    plot_rgb(dataset, save=True)
 
-    image = plot_rgb(satobj, save=True, verbose=False)
+    # Define the region of interest for resampling in meters
+    area_extent = (2.75e5, 2.6e6, 3.15e5, 2.7e6)
 
-# %%
-from hsi_quality.analysis import Resampler
+    # Initialize the resampler for the given roi
+    resampler = Resampler(bbox=area_extent)
 
-# Define the region of interest for resampling in meters
-area_extent = (2.75e5, 2.6e6, 3.15e5, 2.7e6)
+    # Plot and save the metric as a function of off-nadir angle
+    plot_metric(dataset, MvSSIM(), resampler, save=True)
+    plot_metric(dataset, MeanSSIM(), resampler, save=True)
+    plot_metric(dataset, QLambda(), resampler, save=True)
 
-# Initialize the resampler for the given roi
-resampler = Resampler(bbox=area_extent)
-
-# %% 
-from hsi_quality.analysis import plot_metric
-from hsi_quality.metrics import MvSSIM
-
-# Choose the metric to plot
-metric = MvSSIM()
-
-# Plot and save the metric as a function of off-nadir angle
-plot_metric(dataset, metric, resampler, save=True)
+if __name__ == "__main__":
+    main()

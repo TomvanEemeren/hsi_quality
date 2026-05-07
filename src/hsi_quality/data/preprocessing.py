@@ -1,13 +1,8 @@
-import os
 import numpy as np
 import pandas as pd
 import xarray as xr
-from pathlib import Path
 
 from hypso import Hypso2
-
-ROOT_DIR = Path(__file__).resolve().parents[3]
-DATA_DIR = os.path.join(ROOT_DIR, "datasets")
 
 
 class Pipeline:

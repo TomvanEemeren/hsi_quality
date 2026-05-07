@@ -4,15 +4,16 @@ from hsi_quality.utils import convert_timestamp
 from .storage import Storage
 from .preprocessing import Pipeline
 
+
 class Dataset:
-    def __init__(self, loader: Storage, pipeline: Pipeline = None, metadata: pd.DataFrame = None):
-        self.loader = loader
+    def __init__(self, storage: Storage, pipeline: Pipeline = None, metadata: pd.DataFrame = None):
+        self.storage = storage
         self.pipeline = pipeline
 
         if metadata is not None:
             self.metadata = metadata
         else:
-            self.metadata = self.loader.load_metadata()
+            self.metadata = self.storage.load_metadata()
 
     def apply_pipeline(self, processed_dir: str = "processed"):
         if self.pipeline is not None:
@@ -27,23 +28,23 @@ class Dataset:
                 satobj, has_error = self.pipeline.run(satobj, row, areas)
 
                 if not has_error:
-                    self.loader.store_capture(satobj, dir=processed_dir, level="l1d")
+                    self.storage.store_capture(satobj, dir=processed_dir, level="l1d")
                     clean_rows.append(row)
 
                 clean_metadata = pd.DataFrame(clean_rows)
-                self.loader.store_metadata(clean_metadata, dir=processed_dir)
+                self.storage.store_metadata(clean_metadata, dir=processed_dir)
 
     def filter(self, func):
         mask = self.metadata.apply(func, axis=1)
         filtered_metadata = self.metadata.loc[mask]
-        return Dataset(self.loader, self.pipeline, filtered_metadata)
+        return Dataset(self.storage, self.pipeline, filtered_metadata)
 
     def sort(self, by: str):
         sorted_metadata = self.metadata.sort_values(by=by)
-        return Dataset(self.loader, self.pipeline, sorted_metadata)
+        return Dataset(self.storage, self.pipeline, sorted_metadata)
 
     def get_capture(self, capture_name: str):
-        satobj = self.loader.load_capture(capture_name)
+        satobj = self.storage.load_capture(capture_name)
         return satobj
 
     def _get_capture_name(self, idx):

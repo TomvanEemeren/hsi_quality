@@ -1,33 +1,74 @@
-import os
 import numpy as np
 from pathlib import Path
 from matplotlib import pyplot as plt
+
+from hsi_quality.data import Dataset
 
 from hypso import Hypso2
 from hypso.spectral_analysis import get_closest_wavelength_index
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
-PLOTS_DIR = os.path.join(ROOT_DIR, "plots")
+PLOTS_DIR = ROOT_DIR / "plots"
 
 
-def plot_band(satobj: Hypso2, band: int):
+def plot_band(dataset: Dataset, band: int, save: bool = False):
+    target = dataset["location_description"].unique()[0]
+
+    dataset = dataset.sort(by="timestamp_acquired")
+
+    for idx in range(len(dataset)):
+        satobj, _ = dataset[idx]
+
+        image = get_band_image(satobj, band)
+
+        fig, ax = plt.subplots()
+        ax.imshow(image, aspect=1/8)
+        ax.axis("off")
+        if save:
+            capture_name = satobj.capture_name
+            base_dir = Path(PLOTS_DIR) / target / f"band_{band}"
+            base_dir.mkdir(parents=True, exist_ok=True)
+            output_path = base_dir / f"{capture_name}.png"
+
+            fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
+        else:
+            fig.show()
+
+        plt.close(fig)
+
+def get_band_image(satobj: Hypso2, band: int):
     cube = satobj.l1d_cube.values
     img = cube[:, :, band]
-
     rotated_img = np.rot90(img, k=1)
-
-    _, ax = plt.subplots()
-    ax.imshow(rotated_img, aspect=1/8)
-    ax.axis("off")
-    plt.show()
 
     return rotated_img
 
-def plot_rgb(satobj: Hypso2, save: bool = False, verbose: bool = False) -> np.ndarray:
-    """
-    Visualize the hyperspectral datacube as an RGB image using the RGB wavelengths.
-    The hyperspectral image has an aspect ratio of 1:8.
-    """      
+def plot_rgb(dataset: Dataset, save: bool = False):
+    target = dataset["location_description"].unique()[0]
+
+    dataset = dataset.sort(by="timestamp_acquired")
+
+    for idx in range(len(dataset)):
+        satobj, _ = dataset[idx]
+
+        rgb_image = get_rgb_image(satobj)
+
+        fig, ax = plt.subplots()
+        ax.imshow(rgb_image, aspect=1/8)
+        ax.axis("off")
+        if save:
+            capture_name = satobj.capture_name
+            base_dir = Path(PLOTS_DIR) / target / "rgb"
+            base_dir.mkdir(parents=True, exist_ok=True)
+            output_path = base_dir / f"{capture_name}.png"
+
+            fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
+        else:
+            fig.show()
+
+        plt.close(fig)
+
+def get_rgb_image(satobj: Hypso2):
     cube = satobj.l1d_cube
 
     # Get band index of wavelength
@@ -41,7 +82,7 @@ def plot_rgb(satobj: Hypso2, save: bool = False, verbose: bool = False) -> np.nd
     b_idx = get_closest_wavelength_index(satobj, blue_wl)
 
     # Stack selected bands into an RGB image
-    rgb = np.stack(
+    img = np.stack(
         [
             cube.isel(band=r_idx).values,
             cube.isel(band=g_idx).values,
@@ -51,38 +92,11 @@ def plot_rgb(satobj: Hypso2, save: bool = False, verbose: bool = False) -> np.nd
     )
 
     # Per-channel normalization for display
-    p2 = np.percentile(rgb, 2, axis=(0, 1))
-    p98 = np.percentile(rgb, 98, axis=(0, 1))
-    rgb_norm = np.clip((rgb - p2) / (p98 - p2 + 1e-8), 0, 1)
+    p2 = np.percentile(img, 2, axis=(0, 1))
+    p98 = np.percentile(img, 98, axis=(0, 1))
+    img_norm = np.clip((img - p2) / (p98 - p2 + 1e-8), 0, 1)
 
     # Rotate the image for better visualization
-    rotated_rgb = np.rot90(rgb_norm, k=1)
+    rotated_img = np.rot90(img_norm, k=1)
 
-    # Plot the RGB image
-    fig, ax = plt.subplots()
-    ax.imshow(rotated_rgb, aspect=1/8)
-    ax.axis("off")
-    
-    if save:
-        name = satobj.capture_name
-        target = name.split("_")[0]
-
-        base_dir = Path(PLOTS_DIR) / target / "rgb"
-        base_dir.mkdir(parents=True, exist_ok=True)
-        output_path = base_dir / f"{name}.png"
-
-        # Save the RGB image
-        fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
-        if verbose:
-            print(f"Saved RGB image to {output_path}")
-    else:
-        if verbose:
-            name = satobj.capture_name
-            print(f"RGB image for {name}")
-
-        # Display the RGB image
-        plt.show()
-    
-    plt.close(fig)
-
-    return rotated_rgb
+    return rotated_img

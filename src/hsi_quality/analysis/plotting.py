@@ -27,14 +27,17 @@ def plot_metric(dataset: Dataset, metric: Metric, resampler: Resampler, save: bo
 
         scores[angle] = score
 
-    plt.figure(figsize=(10, 5))
-    plt.plot(list(scores.keys()), list(scores.values()), marker='o')
-    plt.xlabel("Off-nadir angle (degrees)")
-    plt.ylabel(f"{metric}")
-    plt.grid()
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(list(scores.keys()), list(scores.values()), marker="o")
+    ax.set_xlabel("Off-Nadir Angle (degrees)")
+    ax.set_ylabel(f"{metric}")
+    ax.grid(True)
     if save:
         base_dir = Path(PLOTS_DIR) / target
         base_dir.mkdir(parents=True, exist_ok=True)
         output_path = base_dir / f"{metric}.png"
-        plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    plt.show()
+        fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
+    else:
+        fig.show()
+
+    plt.close(fig)
