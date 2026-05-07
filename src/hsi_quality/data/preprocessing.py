@@ -5,11 +5,10 @@ import xarray as xr
 from pathlib import Path
 
 from hypso import Hypso2
-from hsi_quality.data import RawDataset
-from .store_data import store_capture
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 DATA_DIR = os.path.join(ROOT_DIR, "datasets")
+
 
 class Pipeline:
     def __init__(self, full: bool = True):
@@ -99,33 +98,3 @@ class Pipeline:
         std = np.std(areas)
         outlier = abs(aoi - mean) > 2 * std
         return outlier
-
-def preprocess_data(target: str, dir: str = "processed", full: bool = True):
-    """
-    Preprocess multiple hyperspectral images for a specific target location.
-
-    Args:
-        target (str): The target location for which to preprocess the data.
-        dir (str): The directory where the processed data will be stored.
-        full (bool): Whether to run the full pipeline.
-    """
-    metadata = pd.read_csv(os.path.join(DATA_DIR, target, "metadata.csv"))
-
-    raw_dataset = RawDataset(metadata)
-
-    pipeline = Pipeline(full=full)
-
-    areas = metadata["area"].to_numpy()
-
-    # Iterate through Hypso-2 captures
-    clean_rows = []
-    for _, (satobj, row) in enumerate(raw_dataset):
-
-        satobj, has_error = pipeline.run(satobj, row, areas)
-
-        if not has_error:
-            store_capture(satobj, row, dir)
-            clean_rows.append(row)
-
-    clean_metadata = pd.DataFrame(clean_rows)
-    clean_metadata.to_csv(os.path.join(DATA_DIR, target, dir, "clean_metadata.csv"), index=False)

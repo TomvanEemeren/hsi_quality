@@ -1,7 +1,7 @@
 import os
-from pathlib import Path
 import requests
 import pandas as pd
+from pathlib import Path
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
@@ -9,7 +9,7 @@ ROOT_DIR = Path(__file__).resolve().parents[3]
 DATA_DIR = os.path.join(ROOT_DIR, "datasets")
 
 
-class ServerLoader:
+class DataLoader:
     BASE_URL = "http://129.241.2.147:8009"
 
     def __init__(self, location: str):
@@ -75,7 +75,7 @@ class ServerLoader:
                 print(f"Could not process {capture_url}: {e}")
 
         if metadata_list:
-            metadata_path = self.base_dir / "metadata.csv"
+            metadata_path = self.raw_dir / "metadata.csv"
             pd.DataFrame(metadata_list).to_csv(metadata_path, index=False)
             print(f"Saved metadata to {metadata_path}")
 

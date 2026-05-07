@@ -1,42 +1,48 @@
-import os
-import numpy as np
 import pandas as pd
-from pathlib import Path
-from dataclasses import dataclass
 
-from hypso import Hypso2
 from hsi_quality.utils import convert_timestamp
-
-ROOT_DIR = Path(__file__).resolve().parents[3]
-DATA_DIR = os.path.join(ROOT_DIR, "datasets")
-
-
-@dataclass
-class Capture:
-    cube: np.ndarray
-    name: str
-    longitudes: np.ndarray
-    latitudes: np.ndarray
-    off_nadir: float
-    wavelengths: np.ndarray
-
+from hsi_quality.data import Pipeline, DataLoader
 
 class Dataset:
-    def __init__(self, dataframe: pd.DataFrame, data_dir: str, level: str):
-        self.df = dataframe
-        self.data_dir = data_dir
-        self.level = level
+    def __init__(self, loader: DataLoader, pipeline: Pipeline = None, metadata: pd.DataFrame = None):
+        self.loader = loader
+        self.pipeline = pipeline
 
-    def __len__(self):
-        return len(self.df)
+        if metadata is not None:
+            self.metadata = metadata
+        else:
+            self.metadata = self.loader.load_metadata()
 
+    def apply_pipeline(self, processed_dir: str = "processed"):
+        if self.pipeline is not None:
+            areas = self.metadata["area"].to_numpy()
 
-class RawDataset(Dataset):
-    def __init__(self, dataframe, data_dir: str = "raw"):
-        super().__init__(dataframe, data_dir, level="l1a")
+            # Iterate through Hypso-2 captures
+            clean_rows = []
+            for idx in range(len(self.metadata)):
+                satobj = self._get_capture(idx)
+                row = self.metadata.iloc[idx]
+            
+                satobj, has_error = self.pipeline.run(satobj, row, areas)
 
-    def __getitem__(self, idx):
-        row = self.df.iloc[idx]
+                if not has_error:
+                    self.loader.store_capture(satobj, dir=processed_dir)
+                    clean_rows.append(row)
+
+                clean_metadata = pd.DataFrame(clean_rows)
+                self.loader.store_metadata(clean_metadata, dir=processed_dir)
+
+    def filter(self, func):
+        mask = self.metadata.apply(func, axis=1)
+        filtered_metadata = self.metadata.loc[mask]
+        return Dataset(self.loader, self.pipeline, filtered_metadata)
+
+    def sort(self, by: str):
+        sorted_metadata = self.metadata.sort_values(by=by)
+        return Dataset(self.loader, self.pipeline, sorted_metadata)
+
+    def _get_capture(self, idx):
+        row = self.metadata.iloc[idx]
 
         # Get metadata for the capture
         target = row["location_description"]
@@ -47,82 +53,12 @@ class RawDataset(Dataset):
         capture_name = f"{target}_{timestamp}"
 
         # Load the capture
-        satobj = self._load_capture(target, capture_name)
-
-        return (satobj, row)
-
-    def _load_capture(self, target: str, capture_name: str):
-        # Load the data and store it in a Hypso2 object
-        path = f"datasets/{target}/{self.data_dir}/{capture_name}-{self.level}.nc"
-        satobj = Hypso2(path=path, verbose=False)
-
-        # Load the latitudes obtained from indirect georeferencing
-        path = f"datasets/{target}/latitudes_indirect/{capture_name}.dat"
-        latitudes = np.fromfile(path, dtype=np.float32)
-        satobj.latitudes = latitudes.reshape(satobj.spatial_dimensions)
-
-        # Load the longitudes obtained from indirect georeferencing
-        path = f"datasets/{target}/longitudes_indirect/{capture_name}.dat"
-        longitudes = np.fromfile(path, dtype=np.float32)
-        satobj.longitudes = longitudes.reshape(satobj.spatial_dimensions)
+        satobj = self.loader.load_capture(capture_name)
 
         return satobj
 
-
-class ProcessedDataset(Dataset):
-    def __init__(self, dataframe, data_dir: str = "processed"):
-        super().__init__(dataframe, data_dir, level="l1d")
-
-    def get_capture(self, target: str, timestamp: str):
-        # Create the path to the netcdf file
-        capture_name = f"{target}_{timestamp}"
-
-        # Load the capture
-        capture = self._load_capture(target, capture_name)
-
-        return capture
-
-    def filter(self, func):
-        mask = self.df.apply(func, axis=1)
-        filtered_df = self.df.loc[mask]
-        return ProcessedDataset(filtered_df, data_dir=self.data_dir)
-
-    def sort(self, by: str):
-        sorted_df = self.df.sort_values(by=by)
-        return ProcessedDataset(sorted_df, data_dir=self.data_dir)
-
-    def __getitem__(self, key):
-        if isinstance(key, str):
-            return self.df[key].reset_index(drop=True)
-        
-        elif isinstance(key, int):
-            row = self.df.iloc[key]
-
-            # Get metadata for the capture
-            target = row["location_description"]
-            timestamp = row["timestamp_acquired_string"]
-            timestamp = convert_timestamp(timestamp)
-
-            # Create the path to the netcdf file
-            capture_name = f"{target}_{timestamp}"
-
-            # Load the capture
-            capture = self._load_capture(target, capture_name)
-
-            return capture
-
-    def _load_capture(self, target: str, capture_name: str):
-        # Load the data and store it in a Hypso2 object
-        path = f"datasets/{target}/{self.data_dir}/{capture_name}-{self.level}.npz"
-        data = np.load(path, allow_pickle=True)
-
-        capture = Capture(
-            cube=data["cube"],
-            name=data["name"].item(),
-            longitudes=data["longitudes"],
-            latitudes=data["latitudes"],
-            off_nadir=data["off_nadir"].item(),
-            wavelengths=data["wavelengths"]
-        )
-
-        return capture
+    def __len__(self):
+        return len(self.metadata)
+    
+    def __getitem__(self, idx):
+        return self._get_capture(idx)

@@ -8,7 +8,7 @@ sys.path.append(path)
 path = os.path.abspath(os.path.join(os.path.dirname(__file__),"src","hypso"))
 sys.path.append(path)
 
-from hsi_quality.data import ServerLoader
+from hsi_quality.data import Dataset, DataLoader, Pipeline, Storage
 
 def main():
     parser = argparse.ArgumentParser()
@@ -19,11 +19,16 @@ def main():
     args = parser.parse_args()
 
     # Load the raw data from the NTNU server
-    server_loader = ServerLoader(args.location)
-    server_loader.load_data()
+    data_loader = DataLoader(args.location)
+    data_loader.load_data()
 
     # Preprocess the data
-    # preprocess_data(args.location, full=args.full, dir=args.directory)
+    pipeline = Pipeline(full=args.full)
+
+    data_loader = Storage(target=args.location, data_dir="raw")
+
+    raw_dataset = Dataset(loader=data_loader, pipeline=pipeline)
+    raw_dataset.apply_pipeline(processed_dir=args.directory)
 
 if __name__ == "__main__":
     main()
