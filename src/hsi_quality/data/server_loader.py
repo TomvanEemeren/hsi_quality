@@ -121,7 +121,7 @@ class ServerLoader:
         raw_url = urljoin(url, f"{capture_name}-l1a.nc")
         destination = self.raw_dir / f"{capture_name}-l1a.nc"
 
-        self._download_file(raw_url, destination)
+        self._download_file(raw_url, destination, stream=True)
 
     def _load_radiance_image(self, url: str, capture_name: str):
         image_url = urljoin(url, f"{capture_name}-scaled-radiance.png")
