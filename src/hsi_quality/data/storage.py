@@ -26,7 +26,7 @@ class Storage:
         path = f"datasets/{self.target}/{self.data_dir}/{capture_name}-{self.level}.nc"
         satobj = Hypso2(path=path, verbose=False)
 
-        if not satobj.latitudes or not satobj.longitudes:
+        if satobj.latitudes is None or satobj.longitudes is None:
             # Load the latitudes obtained from indirect georeferencing
             path = f"datasets/{self.target}/latitudes_indirect/{capture_name}.dat"
             latitudes = np.fromfile(path, dtype=np.float32)
@@ -39,13 +39,13 @@ class Storage:
 
         return satobj
     
-    def store_capture(self, satobj: Hypso2, dir: str = "processed"):
+    def store_capture(self, satobj: Hypso2, dir: str = "processed", level: str = "l1d"):
         store_path = os.path.join(DATA_DIR, self.target, dir)
         os.makedirs(store_path, exist_ok=True)
 
         # Save the capture
         capture_name = satobj.capture_name
-        nc_file = f"{capture_name}-{self.level}.nc"
+        nc_file = f"{capture_name}-{level}.nc"
         l1d_path = os.path.join(store_path, nc_file)
         write_l1d_nc_file(satobj=satobj, l1d_path=l1d_path, overwrite=True)
 
@@ -53,5 +53,5 @@ class Storage:
         store_path = os.path.join(DATA_DIR, self.target, dir)
         os.makedirs(store_path, exist_ok=True)
 
-        metadata_path = os.path.join(store_path, "clean_metadata.csv")
+        metadata_path = os.path.join(store_path, "metadata.csv")
         metadata.to_csv(metadata_path, index=False)

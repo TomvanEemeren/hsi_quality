@@ -1,6 +1,7 @@
 
-from .resample import resample_data, generate_area_def, intersect_captures
-from .rgb import plot_rgb
-from .spectrum import get_spectrum
+from .resample import Resampler, intersect_captures
+from .visualize import plot_rgb, plot_band
+from .spectrum import plot_spectrum
+from .plotting import plot_metric
 
-__all__ = ["plot_rgb", "resample_data", "generate_area_def", "intersect_captures", "get_spectrum"]
+__all__ = ["Resampler", "intersect_captures", "plot_rgb", "plot_band", "plot_spectrum", "plot_metric"]

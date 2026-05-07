@@ -11,14 +11,11 @@ path = os.path.abspath(os.path.join(os.getcwd(),"src","hypso"))
 sys.path.append(path)
 
 # %%
-import pandas as pd
-from hsi_quality.data import ProcessedDataset
+from hsi_quality.data import Dataset, Storage
 
-# Load the metadata corresponding to a dataset
-metadata = pd.read_csv("datasets/dubai/cleaned/clean_metadata.csv")
+loader = Storage(target="dubai", data_dir="cleaned", level="l1d")
 
-# Load the dataset object
-dataset = ProcessedDataset(metadata, data_dir="cleaned")
+dataset = Dataset(loader=loader)
 
 # %%
 from hsi_quality.analysis import plot_rgb
@@ -28,27 +25,25 @@ dataset = dataset.sort(by="timestamp_acquired")
 
 # Iterate through captures and save the RGB images
 for idx in range(len(dataset)):
-    satobj = dataset[idx]
+    satobj, _ = dataset[idx]
 
     image = plot_rgb(satobj, save=True, verbose=False)
 
 # %%
-from hsi_quality.analysis import generate_area_def, resample_data
+from hsi_quality.analysis import Resampler
 
-# Sort by off-nadir angle
-dataset = dataset.sort(by="off_nadir")
+# Define the region of interest for resampling in meters
+area_extent = (2.75e5, 2.6e6, 3.15e5, 2.7e6)
 
-# You have to select this manually for a given target
-area_extent = (2.65e5, 2.6e6, 3.1e5, 2.7e6)
+# Initialize the resampler for the given roi
+resampler = Resampler(bbox=area_extent)
 
-# Generate the desired area to resample to
-area_def = generate_area_def(area_id = 'New area',
-                            proj_id = 'id',
-                            description = 'new area',
-                            bbox = area_extent,
-                            height = 512,
-                            width = 512
-                            )
+# %% 
+from hsi_quality.analysis import plot_metric
+from hsi_quality.metrics import MvSSIM
 
-# Resample all captures to the same area
-resampled_data = resample_data(dataset, area_def)
+# Choose the metric to plot
+metric = MvSSIM()
+
+# Plot and save the metric as a function of off-nadir angle
+plot_metric(dataset, metric, resampler, save=True)

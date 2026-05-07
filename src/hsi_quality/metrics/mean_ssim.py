@@ -1,57 +1,63 @@
 import numpy as np
 from scipy.ndimage import uniform_filter
 
-def calculate_mean_ssim(X, Y, size=11, alpha=1, beta=1, gamma=1):
-    C1 = 0.01**2
-    C2 = 0.03**2
-    C3 = C2 / 2
+from .metric import Metric
 
-    # Convert to numpy arrays of shape (Height, Width, Channels) = (H, W, Q)
-    X = np.asarray(X.values, dtype=np.float32)
-    Y = np.asarray(Y.values, dtype=np.float32)
 
-    # Number of pixels in the window
-    N = size * size
+class MeanSSIM(Metric):
+    def __init__(self):
+        super().__init__(name="MeanSSIM")
+        self.C1 = 0.01**2
+        self.C2 = 0.03**2
+        self.C3 = self.C2 / 2
 
-    # Compute the local means by sliding a window per channel
-    muX = uniform_filter(X, size=(size, size, 1), mode="constant", cval=0.0)
-    muY = uniform_filter(Y, size=(size, size, 1), mode="constant", cval=0.0)
+    def calculate(self, X, Y, size=11, alpha=1, beta=1, gamma=1):
+        # Convert to numpy arrays of shape (Height, Width, Channels) = (H, W, Q)
+        X = np.asarray(X.values, dtype=np.float32)
+        Y = np.asarray(Y.values, dtype=np.float32)
 
-    muX_sq = muX ** 2
-    muY_sq = muY ** 2
-    muX_muY = muX * muY
+        # Number of pixels in the window
+        N = size * size
 
-    # Compute the variances and covariance per channel
-    varX = uniform_filter(X * X, size=(size, size, 1), mode="constant", cval=0.0) - muX_sq
-    varY = uniform_filter(Y * Y, size=(size, size, 1), mode="constant", cval=0.0) - muY_sq
-    covXY = uniform_filter(X * Y, size=(size, size, 1), mode="constant", cval=0.0) - muX_muY
+        # Compute the local means by sliding a window per channel
+        muX = uniform_filter(X, size=(size, size, 1), mode="constant", cval=0.0)
+        muY = uniform_filter(Y, size=(size, size, 1), mode="constant", cval=0.0)
 
-    # Numerical instability can make some variances negative
-    varX = np.maximum(varX, 0)
-    varY = np.maximum(varY, 0)
+        muX_sq = muX ** 2
+        muY_sq = muY ** 2
+        muX_muY = muX * muY
 
-    # Multiply by factor to get sample covariance
-    factor = N / (N - 1)
-    varX *= factor
-    varY *= factor
-    covXY *= factor
+        # Compute the variances and covariance per channel
+        varX = uniform_filter(X * X, size=(size, size, 1), mode="constant", cval=0.0) - muX_sq
+        varY = uniform_filter(Y * Y, size=(size, size, 1), mode="constant", cval=0.0) - muY_sq
+        covXY = uniform_filter(X * Y, size=(size, size, 1), mode="constant", cval=0.0) - muX_muY
 
-    # Luminance
-    l = (2 * muX_muY + C1) / (muX_sq + muY_sq + C1)
-    
-    # Contrast
-    c = (2 * np.sqrt(varX) * np.sqrt(varY) + C2) / (varX + varY + C2)
+        # Numerical instability can make some variances negative
+        varX = np.maximum(varX, 0)
+        varY = np.maximum(varY, 0)
 
-    # Structure
-    s = (covXY + C3) / (np.sqrt(varX) * np.sqrt(varY) + C3)
+        # Multiply by factor to get sample covariance
+        factor = N / (N - 1)
+        varX *= factor
+        varY *= factor
+        covXY *= factor
 
-    # Calculate the SSIM index per channel
-    ssim = (l ** alpha) * (c ** beta) * (s ** gamma)
+        # Luminance
+        l = (2 * muX_muY + self.C1) / (muX_sq + muY_sq + self.C1)
+        
+        # Contrast
+        c = (2 * np.sqrt(varX) * np.sqrt(varY) + self.C2) / (varX + varY + self.C2)
 
-    # Average over channels
-    mean_ssim = np.mean(ssim, axis=2)
+        # Structure
+        s = (covXY + self.C3) / (np.sqrt(varX) * np.sqrt(varY) + self.C3)
 
-    # Average over all mean SSIM values
-    mean_ssim_score = np.mean(mean_ssim)
+        # Calculate the SSIM index per channel
+        ssim = (l ** alpha) * (c ** beta) * (s ** gamma)
 
-    return mean_ssim_score
+        # Average over channels
+        mean_ssim = np.mean(ssim, axis=2)
+
+        # Average over all mean SSIM values
+        mean_ssim_score = np.mean(mean_ssim)
+
+        return mean_ssim_score
