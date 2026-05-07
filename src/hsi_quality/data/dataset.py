@@ -1,10 +1,11 @@
 import pandas as pd
 
 from hsi_quality.utils import convert_timestamp
-from hsi_quality.data import Pipeline, DataLoader
+from .storage import Storage
+from .preprocessing import Pipeline
 
 class Dataset:
-    def __init__(self, loader: DataLoader, pipeline: Pipeline = None, metadata: pd.DataFrame = None):
+    def __init__(self, loader: Storage, pipeline: Pipeline = None, metadata: pd.DataFrame = None):
         self.loader = loader
         self.pipeline = pipeline
 
