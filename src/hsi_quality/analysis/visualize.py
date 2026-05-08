@@ -1,8 +1,11 @@
 import numpy as np
+import xarray as xr
+from tqdm import tqdm
 from pathlib import Path
 from matplotlib import pyplot as plt
 
 from hsi_quality.data import Dataset
+from .resample import Resampler
 
 from hypso import Hypso2
 from hypso.spectral_analysis import get_closest_wavelength_index
@@ -11,22 +14,29 @@ ROOT_DIR = Path(__file__).resolve().parents[3]
 PLOTS_DIR = ROOT_DIR / "plots"
 
 
-def plot_band(dataset: Dataset, band: int, save: bool = False):
+def plot_full_images(dataset: Dataset, band: int = None, save: bool = False, mode: str = "rgb"):
     target = dataset["location_description"].unique()[0]
 
-    dataset = dataset.sort(by="timestamp_acquired")
-
-    for idx in range(len(dataset)):
+    for idx in tqdm(range(len(dataset)), desc="Plotting images", leave=False):
         satobj, _ = dataset[idx]
+        cube = satobj.l1d_cube
 
-        image = get_band_image(satobj, band)
+        if mode == "rgb":
+            image = get_rgb_image(satobj, cube)
+        elif mode == "band" and band is not None:
+            image = get_band_image(cube, band)
+        else:
+            raise ValueError("Invalid mode. Use 'rgb' or 'band'.")
 
         fig, ax = plt.subplots()
         ax.imshow(image, aspect=1/8)
         ax.axis("off")
         if save:
             capture_name = satobj.capture_name
-            base_dir = Path(PLOTS_DIR) / target / f"band_{band}"
+            if mode == "rgb":
+                base_dir = Path(PLOTS_DIR) / target / "rgb"
+            elif mode == "band" and band is not None:
+                base_dir = Path(PLOTS_DIR) / target / f"band_{band}"
             base_dir.mkdir(parents=True, exist_ok=True)
             output_path = base_dir / f"{capture_name}.png"
 
@@ -36,41 +46,42 @@ def plot_band(dataset: Dataset, band: int, save: bool = False):
 
         plt.close(fig)
 
-def get_band_image(satobj: Hypso2, band: int):
-    cube = satobj.l1d_cube.values
-    img = cube[:, :, band]
+def plot_resampled_images(dataset: Dataset, resampler: Resampler, band: int = None, save: bool = False, mode: str = "rgb"):
+    target = dataset["location_description"].unique()[0]
+
+    for idx in tqdm(range(len(dataset)), desc="Plotting resampled images", leave=False):
+        satobj, _ = dataset[idx]
+        cube = resampler.resample_capture(satobj)
+
+        if mode == "rgb":
+            image = get_rgb_image(satobj, cube)
+        elif mode == "band" and band is not None:
+            image = get_band_image(cube, band)
+        else:
+            raise ValueError("Invalid mode. Use 'rgb' or 'band'.")
+
+        fig, ax = plt.subplots()
+        ax.imshow(image)
+        ax.axis("off")
+        if save:
+            capture_name = satobj.capture_name
+            base_dir = Path(PLOTS_DIR) / target / "resampled"
+            base_dir.mkdir(parents=True, exist_ok=True)
+            output_path = base_dir / f"{capture_name}.png"
+
+            fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
+        else:
+            fig.show()
+
+        plt.close(fig)
+
+def get_band_image(cube: xr.DataArray, band: int):
+    img = cube.values[:, :, band]
     rotated_img = np.rot90(img, k=1)
 
     return rotated_img
 
-def plot_rgb(dataset: Dataset, save: bool = False):
-    target = dataset["location_description"].unique()[0]
-
-    dataset = dataset.sort(by="timestamp_acquired")
-
-    for idx in range(len(dataset)):
-        satobj, _ = dataset[idx]
-
-        rgb_image = get_rgb_image(satobj)
-
-        fig, ax = plt.subplots()
-        ax.imshow(rgb_image, aspect=1/8)
-        ax.axis("off")
-        if save:
-            capture_name = satobj.capture_name
-            base_dir = Path(PLOTS_DIR) / target / "rgb"
-            base_dir.mkdir(parents=True, exist_ok=True)
-            output_path = base_dir / f"{capture_name}.png"
-
-            fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
-        else:
-            fig.show()
-
-        plt.close(fig)
-
-def get_rgb_image(satobj: Hypso2):
-    cube = satobj.l1d_cube
-
+def get_rgb_image(satobj: Hypso2, cube: xr.DataArray):
     # Get band index of wavelength
     red_wl = 630
     green_wl = 550

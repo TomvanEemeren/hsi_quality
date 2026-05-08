@@ -1,3 +1,4 @@
+from tqdm import tqdm
 from pathlib import Path
 from matplotlib import pyplot as plt
 
@@ -16,7 +17,7 @@ def plot_metric(dataset: Dataset, metric: Metric, resampler: Resampler, save: bo
     dataset = dataset.sort(by="off_nadir")
 
     scores = {}
-    for idx, (satobj, metadata) in enumerate(dataset):
+    for idx, (satobj, metadata) in enumerate(tqdm(dataset, desc=f"Calculating {metric}", leave=False)):
         angle = metadata["off_nadir"]
         resampled_cube = resampler.resample_capture(satobj)
         

@@ -9,12 +9,14 @@ path = os.path.abspath(os.path.join(os.getcwd(),"src","hypso"))
 sys.path.append(path)
 
 from hsi_quality.data import Dataset, Storage
-from hsi_quality.analysis import Resampler, plot_metric, plot_band, plot_rgb
+from hsi_quality.analysis import Resampler, select_box, intersect_captures
+from hsi_quality.analysis import plot_metric, plot_resampled_images
 from hsi_quality.metrics import MeanSSIM, MvSSIM, QLambda
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--location", type=str, default="dubai", help="Name of the target.")
+    parser.add_argument("--zone", type=int, default=40, help="UTM zone of the target.")
     parser.add_argument("--directory", type=str, default="processed", help="Directory where the processed data is stored.")
     
     args = parser.parse_args()
@@ -23,15 +25,15 @@ def main():
 
     dataset = Dataset(storage=storage)
 
-    plot_band(dataset, band=40, save=True)
-
-    plot_rgb(dataset, save=True)
-
-    # Define the region of interest for resampling in meters
-    area_extent = (2.75e5, 2.6e6, 3.15e5, 2.7e6)
+    # Select bounding box
+    overlap = intersect_captures(dataset, zone=args.zone, visualize=False)
+    area_extent = select_box(overlap)
 
     # Initialize the resampler for the given roi
     resampler = Resampler(bbox=area_extent)
+
+    # Save visualizations of the selected area
+    plot_resampled_images(dataset, resampler, save=True)
 
     # Plot and save the metric as a function of off-nadir angle
     plot_metric(dataset, MvSSIM(), resampler, save=True)
