@@ -30,7 +30,7 @@ def main():
     area_extent = select_box(overlap)
 
     # Initialize the resampler for the given roi
-    resampler = Resampler(bbox=area_extent)
+    resampler = Resampler(bbox=area_extent, zone=args.zone)
 
     # Save visualizations of the selected area
     plot_resampled_images(dataset, resampler, save=True)
