@@ -11,8 +11,8 @@ def convert_timestamp(timestamp: str) -> str:
     return timestamp
 
 
-def convert_zone(zone: str) -> tuple[int, bool]:
-    zone = int(zone[:-1])
-    south = zone.endswith("s")
+def convert_zone(zone_str: str) -> tuple[int, bool]:
+    zone = int(zone_str[:-1])
+    south = zone_str.endswith("s")
 
     return zone, south
