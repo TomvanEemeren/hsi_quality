@@ -25,9 +25,9 @@ def main():
     # Preprocess the data
     pipeline = Pipeline(full=args.full)
 
-    data_loader = Storage(target=args.location, data_dir="raw")
+    storage = Storage(target=args.location, data_dir="raw")
 
-    raw_dataset = Dataset(loader=data_loader, pipeline=pipeline)
+    raw_dataset = Dataset(storage=storage, pipeline=pipeline)
     raw_dataset.apply_pipeline(processed_dir=args.directory)
 
 if __name__ == "__main__":

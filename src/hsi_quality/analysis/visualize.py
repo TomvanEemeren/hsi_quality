@@ -41,10 +41,9 @@ def plot_full_images(dataset: Dataset, band: int = None, save: bool = False, mod
             output_path = base_dir / f"{capture_name}.png"
 
             fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
+            plt.close(fig)
         else:
-            fig.show()
-
-        plt.close(fig)
+            plt.show()
 
 def plot_resampled_images(dataset: Dataset, resampler: Resampler, band: int = None, save: bool = False, mode: str = "rgb"):
     target = dataset["location_description"].unique()[0]
@@ -68,12 +67,10 @@ def plot_resampled_images(dataset: Dataset, resampler: Resampler, band: int = No
             base_dir = Path(PLOTS_DIR) / target / "resampled"
             base_dir.mkdir(parents=True, exist_ok=True)
             output_path = base_dir / f"{capture_name}.png"
-
             fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
+            plt.close(fig)
         else:
-            fig.show()
-
-        plt.close(fig)
+            plt.show()
 
 def get_band_image(cube: xr.DataArray, band: int):
     img = cube.values[:, :, band]
@@ -81,7 +78,7 @@ def get_band_image(cube: xr.DataArray, band: int):
 
     return rotated_img
 
-def get_rgb_image(satobj: Hypso2, cube: xr.DataArray):
+def get_rgb_image(satobj: Hypso2, cube: xr.DataArray, threshold: float = 0.15):
     # Get band index of wavelength
     red_wl = 630
     green_wl = 550
@@ -101,11 +98,17 @@ def get_rgb_image(satobj: Hypso2, cube: xr.DataArray):
         ],
         axis=-1,
     )
-
-    # Per-channel normalization for display
+    
+    # Normalization
     p2 = np.percentile(img, 2, axis=(0, 1))
     p98 = np.percentile(img, 98, axis=(0, 1))
-    img_norm = np.clip((img - p2) / (p98 - p2 + 1e-8), 0, 1)
+    dynamic_range = np.mean(p98 - p2)
+
+    if dynamic_range < threshold:
+        img_norm = img / np.max(img, axis=(0, 1), keepdims=True)
+    else:
+        # Per-channel normalization
+        img_norm = np.clip((img - p2) / (p98 - p2 + 1e-8), 0, 1)
 
     # Rotate the image for better visualization
     rotated_img = np.rot90(img_norm, k=1)

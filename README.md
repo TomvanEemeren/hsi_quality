@@ -41,6 +41,13 @@ conda activate hsi312
 ## Step 3
 Run the `preprocess_data.py` file to download and preprocess the hyperspectral image dataset:
 ```
-python preprocess_data.py
+python preprocess_data.py --location dubai --full --directory cleaned 
 ```
 Note that you must be connected to the local internet network at the NTNU to access the server and download the data!
+
+## Step 4
+Run the `analyze_data.py` file to create the visualizations and plots:
+```
+python analyze_data.py --location dubai --directory cleaned --zone 40n
+```
+where zone corresponds to the UTM zone of the specified location.

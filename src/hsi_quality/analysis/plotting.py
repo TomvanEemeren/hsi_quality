@@ -38,7 +38,6 @@ def plot_metric(dataset: Dataset, metric: Metric, resampler: Resampler, save: bo
         base_dir.mkdir(parents=True, exist_ok=True)
         output_path = base_dir / f"{metric}.png"
         fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
+        plt.close(fig)
     else:
-        fig.show()
-
-    plt.close(fig)
+        plt.show()

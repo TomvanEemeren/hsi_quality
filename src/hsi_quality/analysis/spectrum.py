@@ -1,3 +1,4 @@
+from tqdm import tqdm
 from pathlib import Path
 from matplotlib import pyplot as plt
 
@@ -16,7 +17,7 @@ def plot_spectrum(dataset: Dataset, resampler: Resampler, x: int, y: int, save: 
     max_off_nadir = dataset["off_nadir"].max()
 
     fig, ax = plt.subplots(figsize=(10, 6))
-    for _, (satobj, metadata) in enumerate(dataset):
+    for _, (satobj, metadata) in enumerate(tqdm(dataset, desc="Plotting spectrum")):
         off_nadir = metadata["off_nadir"]
 
         resampled_cube = resampler.resample_capture(satobj)
@@ -34,7 +35,6 @@ def plot_spectrum(dataset: Dataset, resampler: Resampler, x: int, y: int, save: 
         base_dir.mkdir(parents=True, exist_ok=True)
         output_path = base_dir / f"spectrum.png"
         fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
+        plt.close(fig)
     else:
-        fig.show()
-
-    plt.close(fig)
+        plt.show()
