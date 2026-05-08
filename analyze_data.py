@@ -16,7 +16,7 @@ from hsi_quality.metrics import MeanSSIM, MvSSIM, QLambda
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--location", type=str, default="dubai", help="Name of the target.")
-    parser.add_argument("--zone", type=int, default=40, help="UTM zone of the target.")
+    parser.add_argument("--zone", type=str, default="40N", help="UTM zone of the target (e.g., 33s, 40n).")
     parser.add_argument("--directory", type=str, default="processed", help="Directory where the processed data is stored.")
     
     args = parser.parse_args()

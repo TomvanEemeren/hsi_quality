@@ -4,15 +4,17 @@ import xarray as xr
 from pyresample import kd_tree, geometry
 from pyresample.geometry import SwathDefinition
 
+from hsi_quality.utils import convert_zone
 from hypso import Hypso2
 
 
 class Resampler:
-    def __init__(self, bbox: tuple[float, float, float, float], height: int = 512, width: int = 512):
+    def __init__(self, bbox: tuple[float, float, float, float], zone: str, height: int = 512, width: int = 512):
+        self.zone, self.south = convert_zone(zone)
         self.area_extent = bbox # (lower_left_x, lower_left_y, upper_right_x, upper_right_y)
         self.height = height
         self.width = width
-        self.projection = {"proj": "utm", "zone": 40, "ellps": "WGS84", "datum": "WGS84", "units": "m"}
+        self.projection = {"proj": "utm", "zone": self.zone, "south": self.south, "ellps": "WGS84", "datum": "WGS84", "units": "m"}
         self.area_def = geometry.AreaDefinition(
                 area_id='New area',
                 proj_id='id',

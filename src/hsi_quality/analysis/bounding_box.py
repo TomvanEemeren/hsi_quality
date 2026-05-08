@@ -1,12 +1,12 @@
 import numpy as np
 from tqdm import tqdm
+from pyproj import Proj
 from shapely.geometry import Polygon
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
 from hsi_quality.data import Dataset
-from pyproj import Proj
-
+from hsi_quality.utils import convert_zone
 
 class RectangleSelector:
     def __init__(self, ax):
@@ -82,10 +82,11 @@ def select_box(overlap: Polygon) -> tuple[float, float, float, float]:
     return bbox
 
 
-def intersect_captures(dataset: Dataset, zone: int, visualize: bool = False, bbox: tuple[float, float, float, float] = None) -> Polygon:
+def intersect_captures(dataset: Dataset, zone: str, visualize: bool = False, bbox: tuple[float, float, float, float] = None) -> Polygon:
+    zone, south = convert_zone(zone)
 
     # Define projection and datum for mapping 3D coordinates to 2D plane
-    p = Proj(proj='utm', zone=zone, ellps='WGS84', datum='WGS84', preserve_units=False)
+    p = Proj(proj='utm', zone=zone, south=south, ellps='WGS84', datum='WGS84', preserve_units=False)
 
     for idx, (satobj, metadata) in enumerate(tqdm(dataset, desc="Calculating overlap")):
         latitudes = satobj.latitudes

@@ -9,3 +9,10 @@ def convert_timestamp(timestamp: str) -> str:
     timestamp = timestamp.strftime(format)
 
     return timestamp
+
+
+def convert_zone(zone: str) -> tuple[int, bool]:
+    zone = int(zone[:-1])
+    south = zone.endswith("s")
+
+    return zone, south
