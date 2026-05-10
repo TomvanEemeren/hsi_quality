@@ -25,8 +25,9 @@ class Resampler:
                 area_extent=self.area_extent
             )
 
-    def resample_capture(self, satobj: Hypso2):
-        data = satobj.l1d_cube
+    def resample_capture(self, satobj: Hypso2, data: xr.DataArray = None) -> xr.DataArray:
+        if data is None:
+            data = satobj.l1d_cube
 
         latitudes = satobj.latitudes
         longitudes = satobj.longitudes

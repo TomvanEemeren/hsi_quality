@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 
 from hsi_quality.data import Dataset
 from .resample import Resampler
+from hsi_quality.utils import normalize_cube
 
 from hypso import Hypso2
 from hypso.spectral_analysis import get_closest_wavelength_index
@@ -19,7 +20,7 @@ def plot_full_images(dataset: Dataset, band: int = None, save: bool = False, mod
 
     for idx in tqdm(range(len(dataset)), desc="Plotting images", leave=False):
         satobj, _ = dataset[idx]
-        cube = satobj.l1d_cube
+        cube = normalize_cube(satobj.l1d_cube, method="percentile")
 
         if mode == "rgb":
             image = get_rgb_image(satobj, cube)
@@ -50,7 +51,8 @@ def plot_resampled_images(dataset: Dataset, resampler: Resampler, band: int = No
 
     for idx in tqdm(range(len(dataset)), desc="Plotting resampled images", leave=False):
         satobj, _ = dataset[idx]
-        cube = resampler.resample_capture(satobj)
+        cube = normalize_cube(satobj.l1d_cube, method="percentile")
+        cube = resampler.resample_capture(satobj, cube)
 
         if mode == "rgb":
             image = get_rgb_image(satobj, cube)
@@ -98,19 +100,8 @@ def get_rgb_image(satobj: Hypso2, cube: xr.DataArray, threshold: float = 0.15):
         ],
         axis=-1,
     )
-    
-    # Normalization
-    p2 = np.percentile(img, 2, axis=(0, 1))
-    p98 = np.percentile(img, 98, axis=(0, 1))
-    dynamic_range = np.mean(p98 - p2)
-
-    if dynamic_range < threshold:
-        img_norm = img / np.max(img, axis=(0, 1), keepdims=True)
-    else:
-        # Per-channel normalization
-        img_norm = np.clip((img - p2) / (p98 - p2 + 1e-8), 0, 1)
 
     # Rotate the image for better visualization
-    rotated_img = np.rot90(img_norm, k=1)
+    rotated_img = np.rot90(img, k=1)
 
     return rotated_img
