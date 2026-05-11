@@ -101,12 +101,12 @@ def intersect_captures(dataset: Dataset, zone: str, visualize: bool = False, bbo
             np.column_stack((xs[::-1, 0], ys[::-1, 0]))
         ])
 
-        polygon = Polygon(boundary)
+        polygon = Polygon(boundary).buffer(0)
 
         if idx == 0:
             overlap = polygon
         else:
-            overlap = overlap.intersection(polygon)
+            overlap = overlap.intersection(polygon).buffer(0)
 
     if visualize:
         plt.figure(figsize=(5, 5))
