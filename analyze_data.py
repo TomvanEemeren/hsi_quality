@@ -10,7 +10,7 @@ sys.path.append(path)
 
 from hsi_quality.data import Dataset, Storage
 from hsi_quality.analysis import Resampler, select_box, intersect_captures
-from hsi_quality.analysis import plot_metric, plot_resampled_images
+from hsi_quality.analysis import plot_metric, plot_resampled_images, plot_full_images
 from hsi_quality.metrics import MeanSSIM, MvSSIM, QLambda
 
 def main():
@@ -24,6 +24,8 @@ def main():
     storage = Storage(target=args.location, data_dir=args.directory, level="l1d")
 
     dataset = Dataset(storage=storage)
+
+    plot_full_images(dataset, save=True)
 
     # Select bounding box
     overlap = intersect_captures(dataset, zone=args.zone, visualize=False)
