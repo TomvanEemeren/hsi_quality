@@ -55,7 +55,7 @@ class Storage:
 
         if satobj.cloud_mask is not None:
             cloud_labels_path = store_path / "cloud_labels"/ f"{capture_name}.labels"
-            cloud_labels_path.mkdir(parents=True, exist_ok=True)
+            cloud_labels_path.parent.mkdir(parents=True, exist_ok=True)
             np.asarray(satobj.cloud_mask.values, dtype=np.uint8).tofile(cloud_labels_path)
 
     def store_metadata(self, metadata: pd.DataFrame, dir: str = "processed"):
