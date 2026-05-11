@@ -37,3 +37,10 @@ def normalize_cube(cube: xr.DataArray, method: str = "min_max") -> xr.DataArray:
     normalized_cube.attrs.update(cube.attrs)
 
     return normalized_cube
+
+def clip_cube(cube: xr.DataArray) -> xr.DataArray:
+    clipped_data = np.clip(cube.values, 0, 1)
+    clipped_cube = xr.DataArray(clipped_data, dims=cube.dims)
+    clipped_cube.attrs.update(cube.attrs)
+
+    return clipped_cube

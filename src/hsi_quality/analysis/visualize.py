@@ -81,7 +81,7 @@ def get_band_image(cube: xr.DataArray, band: int):
 
     return rotated_img
 
-def get_rgb_image(satobj: Hypso2, cube: xr.DataArray, threshold: float = 0.15):
+def get_rgb_image(satobj: Hypso2, cube: xr.DataArray):
     # Get band index of wavelength
     red_wl = 630
     green_wl = 550

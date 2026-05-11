@@ -40,7 +40,9 @@ class QLambda(Metric):
         varY = np.maximum(varY, 0)
 
         # Calculate SSIM across spectral dimension
-        ssim_values = (4 * covXY * muX * muY) / ((varX + varY) * (muX_sq + muY_sq) + 1e-8)
+        num = 4 * covXY * muX * muY
+        den = (varX + varY) * (muX_sq + muY_sq)
+        ssim_values = np.where(den < 1e-12,  1.0, num / (den + 1e-12))
 
         # Calculate SSIM score per pixel
         ssim_score = np.mean(ssim_values, axis=1)
