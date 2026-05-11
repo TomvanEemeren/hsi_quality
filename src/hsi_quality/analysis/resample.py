@@ -38,4 +38,8 @@ class Resampler:
         resampled_capture = xr.DataArray(resampled_capture, dims=["y", "x", "band"])
         resampled_capture.attrs.update(data.attrs)
 
-        return resampled_capture
+        if satobj.cloud_mask is not None:
+            cloud_mask = satobj.cloud_mask.values
+            resampled_cloud_mask = kd_tree.resample_nearest(swath_def, cloud_mask, self.area_def, fill_value=0.0, radius_of_influence=500)
+
+        return resampled_capture, resampled_cloud_mask

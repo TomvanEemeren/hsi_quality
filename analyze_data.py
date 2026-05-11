@@ -10,7 +10,7 @@ sys.path.append(path)
 
 from hsi_quality.data import Dataset, Storage
 from hsi_quality.analysis import Resampler, select_box, intersect_captures
-from hsi_quality.analysis import plot_metric, plot_resampled_images, plot_full_images
+from hsi_quality.analysis import plot_metric, plot_resampled_images, plot_full_images, plot_cloud_images
 from hsi_quality.metrics import MeanSSIM, MvSSIM, QLambda
 
 def main():
@@ -36,6 +36,7 @@ def main():
 
     # Save visualizations of the selected area
     plot_resampled_images(dataset, resampler, save=True)
+    plot_cloud_images(dataset, resampler, save=True)
 
     # Plot and save the metric as a function of off-nadir angle
     plot_metric(dataset, MvSSIM(), resampler, save=True)

@@ -1,3 +1,4 @@
+import numpy as np
 from tqdm import tqdm
 from pathlib import Path
 from matplotlib import pyplot as plt
@@ -17,11 +18,16 @@ def plot_metric(dataset: Dataset, metric: Metric, resampler: Resampler, save: bo
     dataset = dataset.sort(by="off_nadir")
 
     scores = {}
+    reference = None
     for idx, (satobj, metadata) in enumerate(tqdm(dataset, desc=f"Calculating {metric}", leave=False)):
         angle = metadata["off_nadir"]
-        resampled_cube = resampler.resample_capture(satobj)
-        
-        if idx == 0:
+        resampled_cube, cloud_mask = resampler.resample_capture(satobj)
+
+        cloud_coverage = np.mean(cloud_mask == 2) * 100
+        if cloud_coverage > 5:
+            continue
+
+        if reference is None:
             reference = resampled_cube
         
         score = metric.calculate(reference, resampled_cube)

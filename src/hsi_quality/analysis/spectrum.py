@@ -20,7 +20,8 @@ def plot_spectrum(dataset: Dataset, resampler: Resampler, x: int, y: int, save: 
     for _, (satobj, metadata) in enumerate(tqdm(dataset, desc="Plotting spectrum")):
         off_nadir = metadata["off_nadir"]
 
-        resampled_cube = resampler.resample_capture(satobj)
+        resampled_cube, _ = resampler.resample_capture(satobj)
+
         spectrum = resampled_cube[x, y, :]
         bands = satobj.wavelengths
 

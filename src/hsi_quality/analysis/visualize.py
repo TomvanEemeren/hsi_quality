@@ -3,6 +3,7 @@ import xarray as xr
 from tqdm import tqdm
 from pathlib import Path
 from matplotlib import pyplot as plt
+from matplotlib.colors import ListedColormap
 
 from hsi_quality.data import Dataset
 from .resample import Resampler
@@ -52,7 +53,7 @@ def plot_resampled_images(dataset: Dataset, resampler: Resampler, band: int = No
     for idx in tqdm(range(len(dataset)), desc="Plotting resampled images", leave=False):
         satobj, _ = dataset[idx]
         cube = normalize_cube(satobj.l1d_cube, method="percentile")
-        cube = resampler.resample_capture(satobj, cube)
+        cube, _ = resampler.resample_capture(satobj, cube)
 
         if mode == "rgb":
             image = get_rgb_image(satobj, cube)
@@ -105,3 +106,37 @@ def get_rgb_image(satobj: Hypso2, cube: xr.DataArray, threshold: float = 0.15):
     rotated_img = np.rot90(img, k=1)
 
     return rotated_img
+
+def plot_cloud_images(dataset: Dataset, resampler: Resampler = None, save: bool = False):
+    target = dataset["location_description"].unique()[0]
+
+    classes = np.array([0, 1, 2])
+    cmap_base = plt.get_cmap("tab10")
+    colors = [cmap_base(i) for i in range(len(classes))]
+    cmap = ListedColormap(colors)
+    vmin, vmax = classes.min(), classes.max()
+
+    for idx in tqdm(range(len(dataset)), desc="Plotting cloud masks", leave=False):
+        satobj, _ = dataset[idx]
+        cloud_mask, aspect = None, None
+
+        if resampler is not None:
+            _, cloud_mask = resampler.resample_capture(satobj)
+        else:
+            cloud_mask = satobj.cloud_mask.values
+            aspect = 1/8
+
+        rotated_mask = np.rot90(cloud_mask, k=1)
+
+        fig, ax = plt.subplots()
+        ax.imshow(rotated_mask, cmap=cmap, vmin=vmin, vmax=vmax, aspect=aspect)
+        ax.axis("off")
+        if save:
+            capture_name = satobj.capture_name
+            base_dir = Path(PLOTS_DIR) / target / "cloud_masks"
+            base_dir.mkdir(parents=True, exist_ok=True)
+            output_path = base_dir / f"{capture_name}.png"
+            fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
+            plt.close(fig)
+        else:
+            plt.show()
