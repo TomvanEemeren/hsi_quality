@@ -37,7 +37,6 @@ class Storage:
             satobj.longitudes = longitudes.reshape(satobj.spatial_dimensions)
 
         if satobj.cloud_mask is None:
-            print(f"Loading cloud labels for {capture_name}")
             path = DATA_DIR / self.target / self.data_dir / "cloud_labels" / f"{capture_name}.labels"
             cloud_labels = np.fromfile(path, dtype=np.uint8)
             satobj.cloud_mask = cloud_labels.reshape(satobj.spatial_dimensions)
@@ -56,6 +55,7 @@ class Storage:
 
         if satobj.cloud_mask is not None:
             cloud_labels_path = store_path / "cloud_labels"/ f"{capture_name}.labels"
+            cloud_labels_path.mkdir(parents=True, exist_ok=True)
             np.asarray(satobj.cloud_mask.values, dtype=np.uint8).tofile(cloud_labels_path)
 
     def store_metadata(self, metadata: pd.DataFrame, dir: str = "processed"):
