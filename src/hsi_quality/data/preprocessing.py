@@ -34,8 +34,9 @@ class Pipeline:
                         rainbow_error or \
                         smear_error or \
                         row["overexposed_samples_percentage"] > 5 or \
-                        row["star_tracker_blinded_percentage"] > 90
-        
+                        row["star_tracker_blinded_percentage"] > 90 or \
+                        row["off_nadir"] > 90
+
         return satobj, has_error
 
     def flip_hyperspectral_image(self, satobj: Hypso2):

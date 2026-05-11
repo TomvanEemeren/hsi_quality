@@ -33,6 +33,7 @@ def plot_metric(dataset: Dataset, metric: Metric, resampler: Resampler, save: bo
     ax.set_xlabel("Off-Nadir Angle (degrees)")
     ax.set_ylabel(f"{metric}")
     ax.grid(True)
+    ax.set_ylim(0, 1)
     if save:
         base_dir = Path(PLOTS_DIR) / target
         base_dir.mkdir(parents=True, exist_ok=True)
