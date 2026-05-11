@@ -36,8 +36,14 @@ class Storage:
             longitudes = np.fromfile(path, dtype=np.float32)
             satobj.longitudes = longitudes.reshape(satobj.spatial_dimensions)
 
+        if satobj.cloud_mask is None:
+            print(f"Loading cloud labels for {capture_name}")
+            path = DATA_DIR / self.target / "cloud_labels" / f"{capture_name}.labels"
+            cloud_labels = np.fromfile(path, dtype=np.uint8)
+            satobj.cloud_mask = cloud_labels.reshape(satobj.spatial_dimensions)
+
         return satobj
-    
+
     def store_capture(self, satobj: Hypso2, dir: str = "processed", level: str = "l1d"):
         store_path = DATA_DIR / self.target / dir
         store_path.mkdir(parents=True, exist_ok=True)

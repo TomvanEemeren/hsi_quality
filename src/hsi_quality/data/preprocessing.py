@@ -20,10 +20,8 @@ class Pipeline:
         satobj.generate_l1d_cube(use_direct_georef=True)
 
         if self.full:
-            cube, latitudes, longitudes = self.flip_hyperspectral_image(satobj)
-            satobj.l1d_cube = cube
-            satobj.latitudes = latitudes
-            satobj.longitudes = longitudes
+            satobj = self.flip_hyperspectral_image(satobj)
+            cube = satobj.l1d_cube
 
             # Check for errors in the capture
             outlier = self.detect_outliers(aoi, areas)
@@ -43,16 +41,19 @@ class Pipeline:
         l1d_cube = satobj.l1d_cube
         latitudes = satobj.latitudes
         longitudes = satobj.longitudes
+        labels = satobj.cloud_mask
 
         # Flip the image to always have same orientation
         if satobj.longitudes[0][0] > satobj.longitudes[0][-1]:
-            flipped_latitudes = latitudes[:, ::-1]
-            flipped_longitudes = longitudes[:, ::-1]
-            flipped_cube = l1d_cube[:, ::-1, :]
-            return flipped_cube, flipped_latitudes, flipped_longitudes
+            satobj.l1d_cube = l1d_cube[:, ::-1, :]
+            satobj.latitudes = latitudes[:, ::-1]
+            satobj.longitudes = longitudes[:, ::-1]
+            satobj.cloud_mask = labels[:, ::-1]
+
+            return satobj
 
         # No flipping needed
-        return l1d_cube, latitudes, longitudes
+        return satobj
     
     def has_rainbow_error(self, cube: xr.DataArray) -> bool:
         pixel_var = np.var(cube.values, axis=2)
