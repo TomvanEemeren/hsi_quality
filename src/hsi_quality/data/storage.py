@@ -38,7 +38,7 @@ class Storage:
 
         if satobj.cloud_mask is None:
             print(f"Loading cloud labels for {capture_name}")
-            path = DATA_DIR / self.target / "cloud_labels" / f"{capture_name}.labels"
+            path = DATA_DIR / self.target / self.data_dir / "cloud_labels" / f"{capture_name}.labels"
             cloud_labels = np.fromfile(path, dtype=np.uint8)
             satobj.cloud_mask = cloud_labels.reshape(satobj.spatial_dimensions)
 
@@ -53,6 +53,10 @@ class Storage:
         nc_file = f"{capture_name}-{level}.nc"
         l1d_path = store_path / nc_file
         write_l1d_nc_file(satobj=satobj, l1d_path=l1d_path, overwrite=True)
+
+        if satobj.cloud_mask is not None:
+            cloud_labels_path = store_path / "cloud_labels"/ f"{capture_name}.labels"
+            np.asarray(satobj.cloud_mask.values, dtype=np.uint8).tofile(cloud_labels_path)
 
     def store_metadata(self, metadata: pd.DataFrame, dir: str = "processed"):
         store_path = DATA_DIR / self.target / dir

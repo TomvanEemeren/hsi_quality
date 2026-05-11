@@ -17,7 +17,7 @@ class DataLoader:
         self.base_dir = Path(DATA_DIR) / location
         self.raw_dir = self.base_dir / "raw"
         self.radiance_dir = self.base_dir / "radiance"
-        self.cloud_dir = self.base_dir / "cloud_labels"
+        self.cloud_dir = self.raw_dir / "cloud_labels"
         self.lat_dir = self.base_dir / "latitudes_indirect"
         self.lon_dir = self.base_dir / "longitudes_indirect"
 
