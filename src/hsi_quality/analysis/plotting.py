@@ -7,16 +7,60 @@ from scipy.ndimage import gaussian_filter
 from hsi_quality.metrics import Metric
 from hsi_quality.data import Dataset
 from .resample import Resampler
-from hsi_quality.utils import normalize_cube, clip_cube
 
 from hypso import Hypso2
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 PLOTS_DIR = ROOT_DIR / "plots"
 
+# Parameters for plotting
+rcParams = {
+    'axes.titlesize': 7,
+    'axes.labelsize': 7,
+    'xtick.labelsize': 6,
+    'ytick.labelsize': 6,
+    'legend.fontsize': 7,
+    'legend.title_fontsize': 7,
+    'figure.titlesize': 7,
+    # 'lines.linewidth': 0.8,
+    'lines.markersize': 3,
+}
+
+def set_plotting_style():
+    plt.rcParams.update(rcParams)
 
 def plot_metric(dataset: Dataset, metric: Metric, resampler: Resampler, save: bool = False):
     target = dataset["location_description"].unique()[0]
+    
+    scores = calculate_scores(dataset, metric, resampler)
+
+    x = np.array(list(scores.keys()))[1:]
+    y = np.array(list(scores.values()))[1:]
+
+    coefficients = np.polyfit(x, y, 1)
+    p = np.poly1d(coefficients)
+
+    xp = np.linspace(0, 30, 100)
+
+    fig, ax = plt.subplots(figsize=(2.5, 2))
+    ax.scatter(x, y, label="Data Points")
+    ax.plot(xp, p(xp), label="Regression line", color="red")
+    ax.set_xlabel("Off-Nadir Angle (degrees)")
+    ax.set_ylabel(f"{metric}")
+    ax.grid(True)
+    ax.legend(loc="lower right")
+    ax.set_ylim(0, 1)
+    if save:
+        base_dir = Path(PLOTS_DIR) / target
+        base_dir.mkdir(parents=True, exist_ok=True)
+        path = base_dir / f"{metric}"
+        fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight")
+        fig.savefig(path.with_suffix(".png"), bbox_inches="tight")
+        plt.close(fig)
+    else:
+        plt.show()
+
+def calculate_scores(dataset: Dataset, metric: Metric, resampler: Resampler):
     reference = None
 
     dataset = dataset.sort(by="off_nadir")
@@ -38,20 +82,7 @@ def plot_metric(dataset: Dataset, metric: Metric, resampler: Resampler, save: bo
 
         scores[angle] = score
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(list(scores.keys()), list(scores.values()), marker="o")
-    ax.set_xlabel("Off-Nadir Angle (degrees)")
-    ax.set_ylabel(f"{metric}")
-    ax.grid(True)
-    ax.set_ylim(0, 1)
-    if save:
-        base_dir = Path(PLOTS_DIR) / target
-        base_dir.mkdir(parents=True, exist_ok=True)
-        output_path = base_dir / f"{metric}.png"
-        fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
-        plt.close(fig)
-    else:
-        plt.show()
+    return scores
 
 def plot_blurred(satobj: Hypso2, metric: Metric, resampler: Resampler, band: int = 40, save: bool = False):
     cube = satobj.l1d_cube
@@ -63,8 +94,8 @@ def plot_blurred(satobj: Hypso2, metric: Metric, resampler: Resampler, band: int
         if sigma == 0:
             blurred_cube = resampled_cube
         else:
-            blurred_cube = gaussian_filter(resampled_cube.values, sigma=(sigma, sigma, 0))
-            blurred_cube = resampled_cube.copy(data=blurred_cube)
+            blurred_values = gaussian_filter(resampled_cube.values, sigma=(sigma, sigma, 0))
+            blurred_cube = resampled_cube.copy(data=blurred_values)
 
         score = metric.calculate(resampled_cube, blurred_cube)
 
