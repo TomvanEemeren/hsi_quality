@@ -1,12 +1,15 @@
 import requests
 import pandas as pd
+from tqdm import tqdm
 from pathlib import Path
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+import logging
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 DATA_DIR = ROOT_DIR / "datasets"
 
+logger = logging.getLogger("data_logger")
 
 class DataLoader:
     BASE_URL = "http://129.241.2.147:8009"
@@ -45,7 +48,7 @@ class DataLoader:
         soup = BeautifulSoup(response.text, "html.parser")
 
         # Iterate through the captures
-        for link in soup.find_all("a"):
+        for link in tqdm(soup.find_all("a"), desc="Loading data from server"):
             href = link.get("href")
 
             if not href:
@@ -54,8 +57,8 @@ class DataLoader:
             capture_name = href.strip("/")
 
             # Skip if raw file already exists
-            if capture_name in existing_captures    :
-                print(f"Skipping {capture_name} - already downloaded")
+            if capture_name in existing_captures:
+                logger.info(f"Skipping {capture_name} - already downloaded")
                 continue
             
             capture_url = urljoin(location_url, href)
@@ -63,20 +66,20 @@ class DataLoader:
             try:
                 metadata = self._load_metadata(capture_url, capture_name)
 
-                self._load_raw_data(capture_url, capture_name)
-                self._load_radiance_image(capture_url, capture_name)
                 self._load_cloud_labels(capture_url, capture_name)
                 self._load_lonlat_indirect(capture_url, capture_name)
+                self._load_radiance_image(capture_url, capture_name)
+                self._load_raw_data(capture_url, capture_name)
 
                 metadata_list.append(metadata)
 
             except requests.RequestException as e:
-                print(f"Could not process {capture_url}: {e}")
+                logger.warning(f"Could not load {capture_url}: {e}")
 
         if metadata_list:
             metadata_path = self.raw_dir / "metadata.csv"
             pd.DataFrame(metadata_list).to_csv(metadata_path, index=False)
-            print(f"Saved metadata to {metadata_path}")
+            logger.debug(f"Saved metadata to {metadata_path}")
 
     def _create_directories(self):
         for directory in [
@@ -105,7 +108,7 @@ class DataLoader:
 
             tmp_path.replace(destination)
 
-        print(f"Saved {destination.name} to {destination}")
+        logger.debug(f"Saved {destination.name} to {destination}")
 
 
     def _load_metadata(self, url: str, capture_name: str):

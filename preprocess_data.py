@@ -1,6 +1,7 @@
 import os
 import sys
 import argparse
+import logging
 
 path = os.path.abspath(os.path.join(os.path.dirname(__file__),"src"))
 sys.path.append(path)
@@ -9,6 +10,9 @@ path = os.path.abspath(os.path.join(os.path.dirname(__file__),"src","hypso"))
 sys.path.append(path)
 
 from hsi_quality.data import Dataset, DataLoader, Pipeline, Storage
+from hsi_quality.utils import load_parameters
+from hsi_quality.logger import setup_logger
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -18,12 +22,15 @@ def main():
     
     args = parser.parse_args()
 
+    logger = setup_logger("data_logger", log_file=f"preprocess_{args.location}.log", level=logging.INFO)
+
     # Load the raw data from the NTNU server
     data_loader = DataLoader(args.location)
     data_loader.load_data()
 
     # Preprocess the data
-    pipeline = Pipeline(full=args.full)
+    cfg = load_parameters("preprocessing_params")
+    pipeline = Pipeline(config=cfg, full=args.full)
 
     storage = Storage(target=args.location, data_dir="raw")
 

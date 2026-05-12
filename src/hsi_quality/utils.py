@@ -1,6 +1,12 @@
+import yaml
 import numpy as np
 import xarray as xr
 import pandas as pd
+from pathlib import Path
+
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+CONFIG_DIR = ROOT_DIR / "config"
 
 
 def convert_timestamp(timestamp: str) -> str:
@@ -38,9 +44,19 @@ def normalize_cube(cube: xr.DataArray, method: str = "min_max") -> xr.DataArray:
 
     return normalized_cube
 
+
 def clip_cube(cube: xr.DataArray) -> xr.DataArray:
     clipped_data = np.clip(cube.values, 0, 1)
     clipped_cube = xr.DataArray(clipped_data, dims=cube.dims)
     clipped_cube.attrs.update(cube.attrs)
 
     return clipped_cube
+
+
+def load_parameters(config_name: str) -> dict:
+    path = CONFIG_DIR / f"{config_name}.yaml"
+
+    with open(path, "r") as file:
+        cfg = yaml.safe_load(file)
+
+    return cfg
