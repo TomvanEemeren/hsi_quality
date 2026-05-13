@@ -34,13 +34,15 @@ def plot_metric(dataset: Dataset, metric: Metric, resampler: Resampler, save: bo
     
     scores = calculate_scores(dataset, metric, resampler)
 
-    x = np.array(list(scores.keys()))[1:]
-    y = np.array(list(scores.values()))[1:]
+    x = np.array(list(scores.keys()))
+    y = np.array(list(scores.values()))
 
-    coefficients = np.polyfit(x, y, 1)
+    coefficients = np.polyfit(x[1:], y[1:], 1)
     p = np.poly1d(coefficients)
 
-    xp = np.linspace(0, 30, 100)
+    min_angle = x.min()
+    max_angle = x.max()
+    xp = np.linspace(min_angle, max_angle, 100)
 
     fig, ax = plt.subplots(figsize=(2.5, 2))
     ax.scatter(x, y, label="Data Points")
