@@ -1,36 +1,41 @@
 import numpy as np
 from scipy.ndimage import uniform_filter
 
-from .metric import Metric
+from .metric import FullReferenceMetric
 
 
-class MvSSIM(Metric):
-    def __init__(self):
-        super().__init__(name="MvSSIM")
-        self.C1 = 0.01**2
-        self.C2 = 0.03**2
-        self.C3 = self.C2 / 2
+class MvSSIM(FullReferenceMetric):
+    def __init__(self, params: dict = None):
+        super().__init__(name="MvSSIM", params=params)
+        
+        self.size = self.params.get("size", 11)
+        self.alpha = self.params.get("alpha", 1)
+        self.beta = self.params.get("beta", 1)
+        self.gamma = self.params.get("gamma", 1)
+        self.C1 = self.params.get("C1", 0.01**2)
+        self.C2 = self.params.get("C2", 0.03**2)
+        self.C3 = self.params.get("C3", 0.03**2 / 2)
 
-    def calculate(self, X, Y, size=11, alpha=1, beta=1, gamma=1):
+    def calculate(self, X, Y):
         # Convert to numpy arrays of shape (Height, Width, Channels) = (H, W, Q)
         X = np.asarray(X.values, dtype=np.float32)
         Y = np.asarray(Y.values, dtype=np.float32)
 
         # Number of pixels in the window
-        N = size * size
+        N = self.size * self.size
 
         # Compute the local sample means by sliding a window with zero padding
-        muX = uniform_filter(X, size=(size, size, 1), mode="constant", cval=0.0)
-        muY = uniform_filter(Y, size=(size, size, 1), mode="constant", cval=0.0)
+        muX = uniform_filter(X, size=(self.size, self.size, 1), mode="constant", cval=0.0)
+        muY = uniform_filter(Y, size=(self.size, self.size, 1), mode="constant", cval=0.0)
 
         muX_sq = muX ** 2
         muY_sq = muY ** 2
         muX_muY = muX * muY
 
         # Calculate diagonal elements of sample covariance matrix
-        varX = uniform_filter(X * X, size=(size, size, 1), mode="constant", cval=0.0) - muX_sq
-        varY = uniform_filter(Y * Y, size=(size, size, 1), mode="constant", cval=0.0) - muY_sq
-        covXY = uniform_filter(X * Y, size=(size, size, 1), mode="constant", cval=0.0) - muX_muY
+        varX = uniform_filter(X * X, size=(self.size, self.size, 1), mode="constant", cval=0.0) - muX_sq
+        varY = uniform_filter(Y * Y, size=(self.size, self.size, 1), mode="constant", cval=0.0) - muY_sq
+        covXY = uniform_filter(X * Y, size=(self.size, self.size, 1), mode="constant", cval=0.0) - muX_muY
 
         # Numerical instability can make some variances negative
         varX = np.maximum(varX, 0)
@@ -56,7 +61,7 @@ class MvSSIM(Metric):
         s = ((covXY + self.C3) / (np.sqrt(varX * varY) + self.C3)).mean(axis=2)
 
         # Calculate the MvSSIM index per pixel
-        mvssim_values = (l ** alpha) * (c ** beta) * (s ** gamma)
+        mvssim_values = (l ** self.alpha) * (c ** self.beta) * (s ** self.gamma)
 
         # Average over all MvSSIM values
         mvssim_score = np.mean(mvssim_values)

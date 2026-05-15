@@ -1,0 +1,28 @@
+# MeanSSIM
+MeanSSIM:
+  size: 11
+  alpha: 1.0
+  beta: 1.0
+  gamma: 1.0
+  C1: 0.0001
+  C2: 0.0009
+  C3: 0.00045
+
+# MvSSIM
+MvSSIM:
+  size: 11
+  alpha: 1.0
+  beta: 1.0
+  gamma: 1.0
+  C1: 0.0001
+  C2: 0.0009
+  C3: 0.00045
+
+# Qlambda
+Qlambda:
+  size: 11
+
+# GRD
+GRD:
+  cloud_margin: 3
+  length: 11

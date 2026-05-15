@@ -1,14 +1,16 @@
 import numpy as np
 from scipy.ndimage import convolve1d
 
-from .metric import Metric
+from .metric import FullReferenceMetric
 
 
-class QLambda(Metric):
-    def __init__(self):
-        super().__init__(name="Q-Lambda")
+class QLambda(FullReferenceMetric):
+    def __init__(self, params: dict = None):
+        super().__init__(name="Q-Lambda", params=params)
+        
+        self.size = self.params.get("size", 11)
 
-    def calculate(self, X, Y, size=11):
+    def calculate(self, X, Y):
         # Convert to numpy arrays of shape (Height, Width, Channels) = (H, W, Q)
         X = np.asarray(X.values, dtype=np.float32)
         Y = np.asarray(Y.values, dtype=np.float32)
@@ -21,7 +23,7 @@ class QLambda(Metric):
         Y = Y.reshape(N, Q)
 
         # Create uniform window
-        kernel = np.ones(size) / size
+        kernel = np.ones(self.size) / self.size
 
         # Calculate local means
         muX = convolve1d(X, kernel, axis=1, mode="constant", cval=0.0)
