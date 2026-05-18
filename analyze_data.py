@@ -8,10 +8,10 @@ sys.path.append(path)
 path = os.path.abspath(os.path.join(os.getcwd(),"src","hypso"))
 sys.path.append(path)
 
-from hsi_quality.data import Dataset, Storage
-from hsi_quality.analysis import Resampler, select_box, intersect_captures
-from hsi_quality.analysis import plot_metric, plot_resampled_images, plot_full_images, plot_cloud_images, set_plotting_style
-from hsi_quality.metrics import MeanSSIM, MvSSIM, QLambda
+from hsi_quality.data import Dataset, Storage, Resampler
+from hsi_quality.plotting import select_box, intersect_captures
+from hsi_quality.plotting import plot_metric, plot_resampled_images, plot_full_images, plot_cloud_images
+from hsi_quality.metrics import MeanSSIM, MvSSIM, QLambda, GRD
 from hsi_quality.utils import load_parameters
 
 def main():
@@ -40,13 +40,11 @@ def main():
     plot_cloud_images(dataset, resampler, save=True)
 
     # Plot and save the metric as a function of off-nadir angle
-    set_plotting_style()
-
     cfg = load_parameters("metric_params")
-    
     plot_metric(dataset, MvSSIM(params=cfg["MvSSIM"]), resampler, save=True)
     plot_metric(dataset, MeanSSIM(params=cfg["MeanSSIM"]), resampler, save=True)
     plot_metric(dataset, QLambda(params=cfg["Qlambda"]), resampler, save=True)
+    plot_metric(dataset, GRD(params=cfg["GRD"]), resampler, save=True)
 
 if __name__ == "__main__":
     main()

@@ -52,5 +52,5 @@ class QLambda(FullReferenceMetric):
         # Take the minimum over all pixels
         q_lambda = np.min(ssim_score)
 
-        return q_lambda
+        return q_lambda, None
     

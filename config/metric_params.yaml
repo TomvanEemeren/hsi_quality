@@ -26,3 +26,4 @@ Qlambda:
 GRD:
   cloud_margin: 3
   length: 11
+  num_interp: 1000

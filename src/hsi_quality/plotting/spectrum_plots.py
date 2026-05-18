@@ -2,8 +2,7 @@ from tqdm import tqdm
 from pathlib import Path
 from matplotlib import pyplot as plt
 
-from hsi_quality.data import Dataset
-from .resample import Resampler
+from hsi_quality.data import Dataset, Resampler
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 PLOTS_DIR = ROOT_DIR / "plots"

@@ -66,4 +66,4 @@ class MvSSIM(FullReferenceMetric):
         # Average over all MvSSIM values
         mvssim_score = np.mean(mvssim_values)
 
-        return mvssim_score
+        return mvssim_score, None

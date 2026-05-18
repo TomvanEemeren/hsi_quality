@@ -65,4 +65,4 @@ class MeanSSIM(FullReferenceMetric):
         # Average over all mean SSIM values
         mean_ssim_score = np.mean(mean_ssim)
 
-        return mean_ssim_score
+        return mean_ssim_score, None 
