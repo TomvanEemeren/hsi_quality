@@ -6,7 +6,7 @@ from .metric import FullReferenceMetric
 
 class QLambda(FullReferenceMetric):
     def __init__(self, params: dict = None):
-        super().__init__(name="Q-Lambda", params=params)
+        super().__init__(name="QLambda", params=params)
         
         self.size = self.params.get("size", 11)
 

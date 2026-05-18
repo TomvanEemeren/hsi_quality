@@ -14,8 +14,8 @@ class GRD(Metric):
         self.cloud_margin = self.params.get("cloud_margin", 3)
         self.length = self.params.get("length", 11)
         self.num_interp = self.params.get("num_interp", 1000)
-        self.x0 = np.arange(self.length)
-        self.x0_interp = np.linspace(0, self.length-1, self.num_interp)
+        self.x = np.arange(self.length)
+        self.x_interp = np.linspace(0, self.length-1, self.num_interp)
 
     def calculate(self, cube: np.ndarray, cloud_mask: np.ndarray, metadata: pd.Series):
         gsd_along = metadata["gsd_along"]
@@ -33,9 +33,9 @@ class GRD(Metric):
             if np.all(intensities == 0):
                 continue
 
-            popt, pcov = self.fit_edge_response(intensities)
+            popt, pcov, _ = self.fit_edge_response(intensities)
             
-            fwhm = self.calculate_fwhm(popt)
+            fwhm, esf, esf_norm, lsf_norm, _, _ = self.calculate_fwhm(popt)
 
             grd = fwhm * gsd
             grd_list.append(grd)
@@ -52,14 +52,14 @@ class GRD(Metric):
         return d + a / (1 + np.exp(z))
     
     def calculate_fwhm(self, popt):
-        edge_response = self.edge_function(self.x0_interp, popt[0], popt[1], popt[2], popt[3])
+        edge_spread = self.edge_function(self.x_interp, popt[0], popt[1], popt[2], popt[3])
 
-        normalized_esf = (edge_response - edge_response.min()) / (edge_response.max() - edge_response.min())
+        normalized_edge_spread = (edge_spread - edge_spread.min()) / (edge_spread.max() - edge_spread.min())
 
-        line_spread_function = np.abs(np.diff(normalized_esf))
-        line_spread_function_scaled = 0.5 * line_spread_function / line_spread_function.max()
+        line_spread_function = np.abs(np.diff(normalized_edge_spread))
+        line_spread_function_norm = line_spread_function / line_spread_function.max()
 
-        x1_interp = self.x0_interp[:-1]+(self.x0_interp[1]-self.x0_interp[0])/2
+        x1_interp = self.x_interp[:-1]+(self.x_interp[1]-self.x_interp[0])/2
         
         half_max = line_spread_function.max() / 2
         larger_than_indices = np.where(line_spread_function > half_max)[0]
@@ -67,20 +67,20 @@ class GRD(Metric):
         fwhm_1 = larger_than_indices[-1]
         fwhm = x1_interp[fwhm_1] - x1_interp[fwhm_0]
 
-        return fwhm
-    
+        return fwhm, edge_spread, normalized_edge_spread, line_spread_function_norm, fwhm_0, fwhm_1
+
     def fit_edge_response(self, intensities):
-        intensities_interp = si.griddata(self.x0, intensities, self.x0_interp, method="cubic")
-        intensities_interp_linear = si.griddata(self.x0, intensities, self.x0_interp, method="linear")
+        intensities_interp = si.griddata(self.x, intensities, self.x_interp, method="cubic")
+        intensities_interp_linear = si.griddata(self.x, intensities, self.x_interp, method="linear")
 
         d = np.min(intensities)
         b = self.length // 2
         c = -0.5
         a = 2*(intensities_interp[self.num_interp//2] - d)
 
-        popt, pcov = so.curve_fit(self.edge_function, self.x0_interp, intensities_interp_linear, p0=[a, b, c, d])
+        popt, pcov = so.curve_fit(self.edge_function, self.x_interp, intensities_interp_linear, p0=[a, b, c, d])
 
-        return popt, pcov
+        return popt, pcov, intensities_interp_linear
 
     def get_sharpest_edge_line(self, cube: np.ndarray, cloud_mask: np.ndarray):
         # cube has shape (Height, Width, Bands) = (H, W, Q)
@@ -112,18 +112,21 @@ class GRD(Metric):
         masked = np.full_like(magnitudes, -np.inf) 
         masked[edges] = magnitudes[edges] 
 
-        y0, x0 = np.unravel_index(np.argmax(masked), masked.shape)
+        y_edge, x_edge = np.unravel_index(np.argmax(masked), masked.shape)
 
         # Extract the line along the sharpest edge
         half_length = self.length // 2
         t = np.linspace(-half_length, half_length, self.length)
 
-        angle = directions[y0, x0]
+        angle = directions[y_edge, x_edge]
         dx = np.cos(angle)
         dy = np.sin(angle)
-        xs = x0 + t * dx
-        ys = y0 + t * dy
+        xs = x_edge + t * dx
+        ys = y_edge + t * dy
 
         line = (ys, xs)
 
-        return pc_img, edges, line, x0, y0, angle
+        return pc_img, edges, line, x_edge, y_edge, angle
+
+    def get_x_interp(self):
+        return self.x_interp
