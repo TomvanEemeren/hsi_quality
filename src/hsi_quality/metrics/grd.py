@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from skimage import feature
+from scipy.ndimage import label
 import scipy.optimize as so
 import scipy.interpolate as si
 from sklearn.decomposition import PCA
@@ -13,29 +14,51 @@ class GRD(Metric):
         super().__init__(name="GRD", params=params)
         self.cloud_margin = self.params.get("cloud_margin", 3)
         self.length = self.params.get("length", 11)
+
+        self.min_len = self.params.get("min_len", 5)
+        self.max_len = self.params.get("max_len", 50)
+
+        self.alpha = self.params.get("alpha", 1.0)
+        self.beta = self.params.get("beta", 1.0)
+        self.gamma = self.params.get("gamma", 1.0)
+        self.sample_dist = self.params.get("sample_dist", 5)
+
         self.num_interp = self.params.get("num_interp", 1000)
         self.x = np.arange(self.length)
         self.x_interp = np.linspace(0, self.length-1, self.num_interp)
+        self.x_diff_interp = self.x_interp[:-1]+(self.x_interp[1]-self.x_interp[0])/2
 
     def calculate(self, cube: np.ndarray, cloud_mask: np.ndarray, metadata: pd.Series):
         gsd_along = metadata["gsd_along"]
         gsd_across = metadata["gsd_across"]
 
-        _, _, line, _, _, angle = self.get_sharpest_edge_line(cube, cloud_mask)
+        edge_pixels, img = self.compute_edge_pixels(cube, cloud_mask)
+
+        edges = self.compute_edges(edge_pixels, img)
+
+        filtered_edges = self.filter_edges(edges, img)
+
+        edges_normal = self.compute_edge_normal(filtered_edges)
+
+        selected_edge = self.select_edge(edges_normal)
+        line = selected_edge["normal"]
+        angle = selected_edge["angle"]
 
         gsd = np.hypot(gsd_along * np.cos(angle), gsd_across * np.sin(angle))
 
         grd_list = []
         for band in range(cube.shape[2]):
-            intensities = map_coordinates(cube[:, :, band], line, order=1, mode="nearest")
+            values = map_coordinates(cube[:, :, band], line, order=1, mode="nearest")
 
             # Skip if all intensities are zero
-            if np.all(intensities == 0):
+            if np.all(values == 0):
                 continue
-
-            popt, pcov, _ = self.fit_edge_response(intensities)
             
-            fwhm, esf, esf_norm, lsf_norm, _, _ = self.calculate_fwhm(popt)
+            esf, esf_norm, _, _, _ = self.fit_edge_spread_function(values)
+
+            lsf, lsf_norm = self.compute_line_spread_function(esf_norm)
+
+            fwhm, _, _ = self.compute_fwhm(lsf)
 
             grd = fwhm * gsd
             grd_list.append(grd)
@@ -46,87 +69,176 @@ class GRD(Metric):
 
         return grd, info
 
+    def compute_edge_pixels(self, cube: np.ndarray, cloud_mask: np.ndarray):
+        H, W, Q = cube.shape
+
+        # Reduce the image to 1 dimension using PCA
+        X = cube.reshape(-1, Q)
+        pc = PCA(n_components=1).fit_transform(X)
+        img = pc.reshape(H, W)
+
+        # Compute edge pixels using Canny edge detection
+        edge_pixels = feature.canny(img, sigma=1.0, low_threshold=2, high_threshold=3)
+
+        # Remove edge pixels that are near clouds
+        cloud_region = cloud_mask == 2
+        cloud_region = binary_dilation(cloud_region, iterations=self.cloud_margin)
+        edge_pixels = edge_pixels & ~cloud_region
+
+        return edge_pixels, img
+
+    def compute_edges(self, edge_pixels: np.ndarray, img: np.ndarray):
+        gx = sobel(img, axis=1)
+        gy = sobel(img, axis=0)
+
+        orientations = np.arctan2(gy, gx)
+        magnitudes = np.hypot(gx, gy)
+
+        labeled, ncomp = label(edge_pixels)
+        edges = []
+
+        for comp in range(1, ncomp + 1):
+            edge = {}
+
+            coords = np.column_stack(np.nonzero(labeled == comp))  # (y, x)
+            length = coords.shape[0]
+
+            # discard edges that are too short or too long
+            if length < self.min_len or length > self.max_len:
+                continue
+
+            y_span = np.ptp(coords[:, 0])
+            x_span = np.ptp(coords[:, 1])
+            along_track = y_span > x_span
+            
+            edge["coords"] = coords
+            edge["orientations"] = orientations[coords[:, 0], coords[:, 1]]
+            edge["magnitudes"] = magnitudes[coords[:, 0], coords[:, 1]]
+            edge["along_track"] = along_track
+            edges.append(edge)
+
+        return edges
+
+    def filter_edges(self, edges: list, img: np.ndarray):
+        H, W = img.shape
+
+        filtered_edges = []
+        for edge in edges:
+            coords = edge["coords"]
+            orientation = edge["orientations"]
+
+            dx = np.cos(orientation)
+            dy = np.sin(orientation)
+            x1 = coords[:, 1] + self.sample_dist * dx
+            y1 = coords[:, 0] + self.sample_dist * dy
+            x2 = coords[:, 1] - self.sample_dist * dx
+            y2 = coords[:, 0] - self.sample_dist * dy
+            
+            in_bounds = (
+                (x1 >= 0) & (x1 < W) &
+                (x2 >= 0) & (x2 < W) &
+                (y1 >= 0) & (y1 < H) &
+                (y2 >= 0) & (y2 < H)
+            )
+            if not np.all(in_bounds):
+                continue
+
+            side1_vals = map_coordinates(img, [y1, x1], order=1)
+            side2_vals = map_coordinates(img, [y2, x2], order=1)
+
+            if np.mean(side1_vals) >= np.mean(side2_vals):
+                bright_vals = side1_vals
+                dark_vals = side2_vals
+            else:
+                bright_vals = side2_vals
+                dark_vals = side1_vals
+
+            # Apply statistical checks
+            bright_mean = bright_vals.mean()
+            dark_mean = dark_vals.mean()
+            sigma_grid = np.std(np.concatenate([bright_vals, dark_vals]))
+
+            if (bright_mean > self.alpha * dark_mean and
+                np.std(bright_vals) < self.beta * sigma_grid and
+                np.std(dark_vals) < self.beta * sigma_grid and
+                np.percentile(bright_vals, 10) > self.gamma * np.percentile(dark_vals, 90)):
+                filtered_edges.append(edge)
+
+        return filtered_edges
+
+    def compute_edge_normal(self, edges: list):
+        half_length = self.length // 2
+        t = np.linspace(-half_length, half_length, self.length)
+
+        for edge in edges:
+            coords = edge["coords"]
+            orientations = edge["orientations"]
+
+            centroid = np.mean(coords, axis=0)
+            angle = np.mean(orientations)
+
+            nx = np.cos(angle)
+            ny = np.sin(angle)
+
+            ys = centroid[0] + t * ny
+            xs = centroid[1] + t * nx
+            
+            edge["normal"] = (ys, xs)
+            edge["angle"] = angle
+        
+        return edges
+
+    def select_edge(self, edges: list):
+        max_magnitude = -np.inf
+        sharpest_edge = None
+
+        for edge in edges:
+            magnitude = edge["magnitudes"].mean()
+            if magnitude > max_magnitude:
+                max_magnitude = magnitude
+                sharpest_edge = edge
+
+        return sharpest_edge
+    
+    def fit_edge_spread_function(self, values):
+        values_cubic = si.griddata(self.x, values, self.x_interp, method="cubic")
+        values_linear = si.griddata(self.x, values, self.x_interp, method="linear")
+
+        d = np.min(values)
+        b = self.length // 2
+        c = -0.5
+        a = 2*(values_cubic[self.num_interp//2] - d)
+
+        popt, pcov = so.curve_fit(self.edge_function, self.x_interp, values_linear, p0=[a, b, c, d])
+
+        esf = self.edge_function(self.x_interp, popt[0], popt[1], popt[2], popt[3])
+
+        esf_norm = (esf - esf.min()) / (esf.max() - esf.min())
+
+        return esf, esf_norm, popt, pcov, values_linear
+
+    def compute_line_spread_function(self, esf_norm):
+        lsf = np.abs(np.diff(esf_norm))
+        lsf_norm = lsf / lsf.max()
+
+        return lsf, lsf_norm
+
+    def compute_fwhm(self, lsf):
+        half_max = lsf.max() / 2
+        larger_than_indices = np.where(lsf > half_max)[0]
+        fwhm_0 = larger_than_indices[0]
+        fwhm_1 = larger_than_indices[-1]
+        fwhm = self.x_diff_interp[fwhm_1] - self.x_diff_interp[fwhm_0]
+
+        return fwhm, fwhm_0, fwhm_1
+
     @staticmethod
     def edge_function(x, a, b, c, d):
         z = np.clip((x - b) / c, -500, 500)
         return d + a / (1 + np.exp(z))
     
-    def calculate_fwhm(self, popt):
-        edge_spread = self.edge_function(self.x_interp, popt[0], popt[1], popt[2], popt[3])
-
-        normalized_edge_spread = (edge_spread - edge_spread.min()) / (edge_spread.max() - edge_spread.min())
-
-        line_spread_function = np.abs(np.diff(normalized_edge_spread))
-        line_spread_function_norm = line_spread_function / line_spread_function.max()
-
-        x1_interp = self.x_interp[:-1]+(self.x_interp[1]-self.x_interp[0])/2
-        
-        half_max = line_spread_function.max() / 2
-        larger_than_indices = np.where(line_spread_function > half_max)[0]
-        fwhm_0 = larger_than_indices[0]
-        fwhm_1 = larger_than_indices[-1]
-        fwhm = x1_interp[fwhm_1] - x1_interp[fwhm_0]
-
-        return fwhm, edge_spread, normalized_edge_spread, line_spread_function_norm, fwhm_0, fwhm_1
-
-    def fit_edge_response(self, intensities):
-        intensities_interp = si.griddata(self.x, intensities, self.x_interp, method="cubic")
-        intensities_interp_linear = si.griddata(self.x, intensities, self.x_interp, method="linear")
-
-        d = np.min(intensities)
-        b = self.length // 2
-        c = -0.5
-        a = 2*(intensities_interp[self.num_interp//2] - d)
-
-        popt, pcov = so.curve_fit(self.edge_function, self.x_interp, intensities_interp_linear, p0=[a, b, c, d])
-
-        return popt, pcov, intensities_interp_linear
-
-    def get_sharpest_edge_line(self, cube: np.ndarray, cloud_mask: np.ndarray):
-        # cube has shape (Height, Width, Bands) = (H, W, Q)
-        H, W, Q = cube.shape
-
-        # Reduce the image to 1 dimension
-        X = cube.reshape(-1, Q)
-        pc = PCA(n_components=1).fit_transform(X)
-        pc_img = pc.reshape(H, W)
-
-        # Extract the edges in the image
-        edges = feature.canny(pc_img, sigma=1.0, low_threshold=2, high_threshold=3)
-
-        # Remove any edges that are near clouds
-        if cloud_mask is not None:
-            cloud_region = cloud_mask == 2
-            if self.cloud_margin > 0:
-                cloud_region = binary_dilation(cloud_region, iterations=self.cloud_margin)
-            edges = edges & ~cloud_region
-        
-        # Find the intensity gradients for each pixel
-        gx = sobel(pc_img, axis=1)
-        gy = sobel(pc_img, axis=0)
-
-        magnitudes = np.hypot(gx, gy)
-        directions = np.arctan2(gy, gx)
-
-        # Get the sharpest edge 
-        masked = np.full_like(magnitudes, -np.inf) 
-        masked[edges] = magnitudes[edges] 
-
-        y_edge, x_edge = np.unravel_index(np.argmax(masked), masked.shape)
-
-        # Extract the line along the sharpest edge
-        half_length = self.length // 2
-        t = np.linspace(-half_length, half_length, self.length)
-
-        angle = directions[y_edge, x_edge]
-        dx = np.cos(angle)
-        dy = np.sin(angle)
-        xs = x_edge + t * dx
-        ys = y_edge + t * dy
-
-        line = (ys, xs)
-
-        return pc_img, edges, line, x_edge, y_edge, angle
-
     def get_x_interp(self):
         return self.x_interp
+    
+    def get_x_diff_interp(self):
+        return self.x_diff_interp
