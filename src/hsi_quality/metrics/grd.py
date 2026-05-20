@@ -43,6 +43,9 @@ class GRD(Metric):
         refined_edges = self.refine_sub_pixels(filtered_edges, img)
 
         selected_edge = self.select_edge(refined_edges)
+
+        if selected_edge is None:
+            return np.nan, {"fwhm": np.nan, "gsd": np.nan}
         
         line = selected_edge["normal"]
         angle = selected_edge["angle"]
@@ -249,14 +252,21 @@ class GRD(Metric):
 
         d = np.min(values)
         b = self.length // 2
-        c = -0.5
-        a = 2*(values_cubic[self.num_interp//2] - d)
+        if values_linear[-1] > values_linear[0]:
+            c = -0.5
+        else:
+            c = 0.5
+        a = np.max(values_linear) - np.min(values_linear)
 
         popt, pcov = so.curve_fit(self.edge_function, self.x_interp, values_linear, p0=[a, b, c, d])
 
         esf = self.edge_function(self.x_interp, popt[0], popt[1], popt[2], popt[3])
 
-        esf_norm = (esf - esf.min()) / (esf.max() - esf.min())
+        esf_range = esf.max() - esf.min()
+        if np.isclose(esf_range, 0.0, atol=1e-12):
+            esf_norm = np.zeros_like(esf)
+        else:
+            esf_norm = (esf - esf.min()) / esf_range
 
         return esf, esf_norm, popt, pcov, values_linear
 
@@ -270,9 +280,11 @@ class GRD(Metric):
         half_max = lsf.max() / 2
 
         larger_than_indices = np.where(lsf > half_max)[0]
+        if larger_than_indices.size == 0:
+            return np.nan, None, None
+        
         fwhm_0 = larger_than_indices[0]
         fwhm_1 = larger_than_indices[-1]
-
         fwhm = self.x_diff_interp[fwhm_1] - self.x_diff_interp[fwhm_0]
 
         return fwhm, fwhm_0, fwhm_1
