@@ -4,11 +4,9 @@ from matplotlib import pyplot as plt
 from scipy.ndimage import gaussian_filter
 
 from hsi_quality.data import Resampler
+from hsi_quality import RESULTS_DIR
 
 from hypso import Hypso2
-
-ROOT_DIR = Path(__file__).resolve().parents[3]
-PLOTS_DIR = ROOT_DIR / "plots"
 
 
 class Metric:
@@ -55,7 +53,7 @@ class FullReferenceMetric(Metric):
             ax[idx].axis("off")
             ax[idx].set_title(f"Sigma: {sigma}, Score: {score:.4f}")
         if save:
-            base_dir = Path(PLOTS_DIR)
+            base_dir = Path(RESULTS_DIR)
             base_dir.mkdir(parents=True, exist_ok=True)
             output_path = base_dir / f"{metric}_blurred.png"
             fig.savefig(output_path, bbox_inches="tight", dpi=300)

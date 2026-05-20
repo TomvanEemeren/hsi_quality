@@ -7,12 +7,10 @@ from matplotlib.colors import ListedColormap
 
 from hsi_quality.data import Dataset, Resampler
 from hsi_quality.utils import normalize_cube
+from hsi_quality import RESULTS_DIR
 
 from hypso import Hypso2
 from hypso.spectral_analysis import get_closest_wavelength_index
-
-ROOT_DIR = Path(__file__).resolve().parents[3]
-PLOTS_DIR = ROOT_DIR / "plots"
 
 
 def plot_full_images(dataset: Dataset, band: int = None, save: bool = False, mode: str = "rgb"):
@@ -35,9 +33,9 @@ def plot_full_images(dataset: Dataset, band: int = None, save: bool = False, mod
         if save:
             capture_name = satobj.capture_name
             if mode == "rgb":
-                base_dir = Path(PLOTS_DIR) / target / "rgb"
+                base_dir = Path(RESULTS_DIR) / target / "rgb"
             elif mode == "band" and band is not None:
-                base_dir = Path(PLOTS_DIR) / target / f"band_{band}"
+                base_dir = Path(RESULTS_DIR) / target / f"band_{band}"
             base_dir.mkdir(parents=True, exist_ok=True)
             output_path = base_dir / f"{capture_name}.png"
 
@@ -66,7 +64,7 @@ def plot_resampled_images(dataset: Dataset, resampler: Resampler, band: int = No
         ax.axis("off")
         if save:
             capture_name = satobj.capture_name
-            base_dir = Path(PLOTS_DIR) / target / "resampled"
+            base_dir = Path(RESULTS_DIR) / target / "resampled"
             base_dir.mkdir(parents=True, exist_ok=True)
             output_path = base_dir / f"{capture_name}.png"
             fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
@@ -132,7 +130,7 @@ def plot_cloud_images(dataset: Dataset, resampler: Resampler = None, save: bool 
         ax.axis("off")
         if save:
             capture_name = satobj.capture_name
-            base_dir = Path(PLOTS_DIR) / target / "cloud_masks"
+            base_dir = Path(RESULTS_DIR) / target / "cloud_masks"
             base_dir.mkdir(parents=True, exist_ok=True)
             output_path = base_dir / f"{capture_name}.png"
             fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)

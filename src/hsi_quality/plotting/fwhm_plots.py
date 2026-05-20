@@ -4,11 +4,9 @@ from matplotlib import pyplot as plt
 from scipy.ndimage import map_coordinates
 
 from hsi_quality.metrics import GRD
+from hsi_quality import RESULTS_DIR
 
 from hypso import Hypso2
-
-ROOT_DIR = Path(__file__).resolve().parents[3]
-PLOTS_DIR = ROOT_DIR / "plots"
 
 
 def plot_edge_pixels(satobj: Hypso2, grd: GRD, save: bool = False):
@@ -35,7 +33,7 @@ def plot_edge_pixels(satobj: Hypso2, grd: GRD, save: bool = False):
 
     if save:
         target = satobj.capture_target
-        base_dir = Path(PLOTS_DIR) / target / "fwhm"
+        base_dir = Path(RESULTS_DIR) / target / "fwhm"
         base_dir.mkdir(parents=True, exist_ok=True)
         fig_pca.savefig(base_dir / f"pca.png", bbox_inches="tight")
         fig_edges.savefig(base_dir / f"edge_pixels.png", bbox_inches="tight")
@@ -50,7 +48,7 @@ def plot_normal(satobj, grd: GRD, save: bool = False):
     cube = satobj.l1d_cube.values
     cloud_mask = satobj.cloud_mask
     
-    selected_edge = get_edge(cube, cloud_mask, grd)
+    selected_edge, img = get_edge(cube, cloud_mask, grd)
     if selected_edge is None:
         return
     
@@ -74,7 +72,7 @@ def plot_normal(satobj, grd: GRD, save: bool = False):
     ax.axis("off")
     if save:
         target = satobj.capture_target
-        base_dir = Path(PLOTS_DIR) / target / "fwhm"
+        base_dir = Path(RESULTS_DIR) / target / "fwhm"
         base_dir.mkdir(parents=True, exist_ok=True)
         fig.savefig(base_dir / f"normal.png", bbox_inches="tight")
         plt.close(fig)
@@ -85,7 +83,7 @@ def plot_esf(satobj, grd: GRD, band: int = 40, save: bool = False):
     cube = satobj.l1d_cube.values
     cloud_mask = satobj.cloud_mask
 
-    selected_edge = get_edge(cube, cloud_mask, grd)
+    selected_edge, img = get_edge(cube, cloud_mask, grd)
     if selected_edge is None:
         return
     
@@ -107,7 +105,7 @@ def plot_esf(satobj, grd: GRD, band: int = 40, save: bool = False):
 
     if save:
         target = satobj.capture_target
-        base_dir = Path(PLOTS_DIR) / target / "fwhm"
+        base_dir = Path(RESULTS_DIR) / target / "fwhm"
         base_dir.mkdir(parents=True, exist_ok=True)
         fig.savefig(base_dir / f"esf.png", bbox_inches="tight")
         plt.close(fig)
@@ -118,7 +116,7 @@ def plot_lsf(satobj, grd: GRD, band: int = 40, save: bool = False):
     cube = satobj.l1d_cube.values
     cloud_mask = satobj.cloud_mask
 
-    selected_edge = get_edge(cube, cloud_mask, grd)
+    selected_edge, img = get_edge(cube, cloud_mask, grd)
     if selected_edge is None:
         return
     
@@ -143,7 +141,7 @@ def plot_lsf(satobj, grd: GRD, band: int = 40, save: bool = False):
 
     if save:
         target = satobj.capture_target
-        base_dir = Path(PLOTS_DIR) / target / "fwhm"
+        base_dir = Path(RESULTS_DIR) / target / "fwhm"
         base_dir.mkdir(parents=True, exist_ok=True)
         fig.savefig(base_dir / f"lsf.png", bbox_inches="tight")
         plt.close(fig)
@@ -154,7 +152,7 @@ def plot_fwhm(satobj, grd: GRD, band: int = 40, save: bool = False):
     cube = satobj.l1d_cube.values
     cloud_mask = satobj.cloud_mask
 
-    selected_edge = get_edge(cube, cloud_mask, grd)
+    selected_edge, img = get_edge(cube, cloud_mask, grd)
     if selected_edge is None:
         return
     
@@ -190,7 +188,7 @@ def plot_fwhm(satobj, grd: GRD, band: int = 40, save: bool = False):
 
     if save:
         target = satobj.capture_target
-        base_dir = Path(PLOTS_DIR) / target / "fwhm"
+        base_dir = Path(RESULTS_DIR) / target / "fwhm"
         base_dir.mkdir(parents=True, exist_ok=True)
         fig.savefig(base_dir / f"fwhm.png", bbox_inches="tight")
         plt.close(fig)
@@ -208,4 +206,4 @@ def get_edge(cube: np.ndarray, cloud_mask: np.ndarray, grd: GRD):
 
     selected_edge = grd.select_edge(refined_edges)
 
-    return selected_edge
+    return selected_edge, img

@@ -1,8 +1,7 @@
 import logging
-from pathlib import Path
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
-LOGS_DIR = ROOT_DIR / "logs"
+from hsi_quality import LOGS_DIR
+
 
 def setup_logger(name: str, log_file: str = None, level=logging.INFO) -> logging.Logger:
     logger = logging.getLogger(name)

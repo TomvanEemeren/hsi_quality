@@ -208,5 +208,6 @@ __marimo__/
 
 datasets/
 .vscode/
-plots/**/*.png
-plots/**/*.pdf
+results/**/*.png
+results/**/*.pdf
+results/**/*.csv

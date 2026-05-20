@@ -2,11 +2,8 @@ import yaml
 import numpy as np
 import xarray as xr
 import pandas as pd
-from pathlib import Path
 
-
-ROOT_DIR = Path(__file__).resolve().parents[2]
-CONFIG_DIR = ROOT_DIR / "config"
+from hsi_quality import CONFIG_DIR
 
 
 def convert_timestamp(timestamp: str) -> str:

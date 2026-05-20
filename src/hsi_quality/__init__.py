@@ -1,4 +1,5 @@
 from matplotlib import pyplot as plt
+from pathlib import Path
 
 # Parameters for plotting
 rcParams = {
@@ -14,3 +15,9 @@ rcParams = {
 }
 
 plt.rcParams.update(rcParams)
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+RESULTS_DIR = ROOT_DIR / "results"
+LOGS_DIR = ROOT_DIR / "logs"
+CONFIG_DIR = ROOT_DIR / "config"
+DATA_DIR = ROOT_DIR / "data"

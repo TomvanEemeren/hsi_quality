@@ -3,9 +3,7 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 
 from hsi_quality.data import Dataset, Resampler
-
-ROOT_DIR = Path(__file__).resolve().parents[3]
-PLOTS_DIR = ROOT_DIR / "plots"
+from hsi_quality import RESULTS_DIR
 
 
 def plot_spectrum(dataset: Dataset, resampler: Resampler, x: int, y: int, save: bool = False):
@@ -31,7 +29,7 @@ def plot_spectrum(dataset: Dataset, resampler: Resampler, x: int, y: int, save: 
     ax.grid(True)
     ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
     if save:
-        base_dir = Path(PLOTS_DIR) / target
+        base_dir = Path(RESULTS_DIR) / target
         base_dir.mkdir(parents=True, exist_ok=True)
         output_path = base_dir / f"spectrum.png"
         fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
