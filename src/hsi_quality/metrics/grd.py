@@ -14,6 +14,8 @@ class GRD(Metric):
         super().__init__(name="GRD", params=params)
         self.cloud_margin = self.params.get("cloud_margin", 3)
         self.length = self.params.get("length", 11)
+        self.low_threshold = self.params.get("low_threshold", 0.1)
+        self.high_threshold = self.params.get("high_threshold", 0.3)
 
         self.min_len = self.params.get("min_len", 5)
         self.max_len = self.params.get("max_len", 50)
@@ -38,13 +40,14 @@ class GRD(Metric):
 
         filtered_edges = self.filter_edges(edges, img)
 
-        edges_normal = self.compute_edge_normal(filtered_edges)
+        refined_edges = self.refine_sub_pixels(filtered_edges, img)
 
-        selected_edge = self.select_edge(edges_normal)
+        selected_edge = self.select_edge(refined_edges)
+        
         line = selected_edge["normal"]
         angle = selected_edge["angle"]
 
-        gsd = np.hypot(gsd_along * np.cos(angle), gsd_across * np.sin(angle))
+        gsd = np.sqrt((gsd_across * np.sin(angle))**2 + (gsd_along  * np.cos(angle))**2)
 
         grd_list = []
         for band in range(cube.shape[2]):
@@ -53,7 +56,7 @@ class GRD(Metric):
             # Skip if all intensities are zero
             if np.all(values == 0):
                 continue
-            
+
             esf, esf_norm, _, _, _ = self.fit_edge_spread_function(values)
 
             lsf, lsf_norm = self.compute_line_spread_function(esf_norm)
@@ -70,15 +73,10 @@ class GRD(Metric):
         return grd, info
 
     def compute_edge_pixels(self, cube: np.ndarray, cloud_mask: np.ndarray):
-        H, W, Q = cube.shape
-
-        # Reduce the image to 1 dimension using PCA
-        X = cube.reshape(-1, Q)
-        pc = PCA(n_components=1).fit_transform(X)
-        img = pc.reshape(H, W)
+        img = cube[:, :, 60]
 
         # Compute edge pixels using Canny edge detection
-        edge_pixels = feature.canny(img, sigma=1.0, low_threshold=2, high_threshold=3)
+        edge_pixels = feature.canny(img, sigma=1.0, low_threshold=self.low_threshold, high_threshold=self.high_threshold)
 
         # Remove edge pixels that are near clouds
         cloud_region = cloud_mask == 2
@@ -166,27 +164,72 @@ class GRD(Metric):
 
         return filtered_edges
 
-    def compute_edge_normal(self, edges: list):
-        half_length = self.length // 2
-        t = np.linspace(-half_length, half_length, self.length)
+    def refine_sub_pixels(self, filtered_edges: list, img: np.ndarray):
+        offsets = np.array([-3, -2, -1, 0, 1, 2, 3], dtype=float)
 
-        for edge in edges:
+        refined_edges = []
+        for edge in filtered_edges:
             coords = edge["coords"]
             orientations = edge["orientations"]
 
-            centroid = np.mean(coords, axis=0)
-            angle = np.mean(orientations)
+            sub_coords = np.zeros((coords.shape[0], 2), dtype=float)
+            for i, ((y, x), angle) in enumerate(zip(coords, orientations)):
+                # Sample pixels along the gradient direction through the edge pixel
+                dx = np.cos(angle)
+                dy = np.sin(angle)
+                ys = y + offsets * dy
+                xs = x + offsets * dx
+                vals = map_coordinates(img, [ys, xs], order=1, mode="nearest")
 
-            nx = np.cos(angle)
-            ny = np.sin(angle)
+                # Fit a cubic spline and take second derivative to locate sub-pixel edge
+                cs = si.CubicSpline(offsets, vals, extrapolate=True)
+                second_derivative = cs.derivative(2)
 
-            ys = centroid[0] + t * ny
-            xs = centroid[1] + t * nx
-            
-            edge["normal"] = (ys, xs)
-            edge["angle"] = angle
-        
-        return edges
+                roots = second_derivative.roots()
+                if roots.size == 0:
+                    root = 0.0
+                else:
+                    root = roots[np.argmin(np.abs(roots))]
+
+                sub_coords[i, 0] = y + root * dy
+                sub_coords[i, 1] = x + root * dx
+
+            # Fit a straight line through the sub-pixel points using orthogonal least squares
+            centroid = sub_coords.mean(axis=0)
+            centered = sub_coords - centroid
+
+            _, _, vt = np.linalg.svd(centered, full_matrices=False)
+            direction = vt[0]
+
+            # normalize tangent
+            ty, tx = direction
+            norm = np.hypot(tx, ty)
+            tx /= norm
+            ty /= norm
+
+            # tangent line
+            edge_length = len(coords)
+            t = np.linspace(-edge_length//2, edge_length//2, edge_length)
+            yt = centroid[0] + t * ty
+            xt = centroid[1] + t * tx
+
+            # normal line
+            ny = -tx
+            nx = ty
+
+            t = np.linspace(-self.length//2, self.length//2, self.length)
+            yn = centroid[0] + t * ny
+            xn = centroid[1] + t * nx
+
+            refined_edge = edge.copy()
+            refined_edge["sub_coords"] = sub_coords
+            refined_edge["tangent"] = (yt, xt)
+            refined_edge["normal"] = (yn, xn)
+            refined_edge["centroid"] = centroid
+            refined_edge["angle"] = np.arctan2(ty, tx)
+            refined_edges.append(refined_edge)
+
+        return refined_edges
 
     def select_edge(self, edges: list):
         max_magnitude = -np.inf
@@ -225,9 +268,11 @@ class GRD(Metric):
 
     def compute_fwhm(self, lsf):
         half_max = lsf.max() / 2
+
         larger_than_indices = np.where(lsf > half_max)[0]
         fwhm_0 = larger_than_indices[0]
         fwhm_1 = larger_than_indices[-1]
+
         fwhm = self.x_diff_interp[fwhm_1] - self.x_diff_interp[fwhm_0]
 
         return fwhm, fwhm_0, fwhm_1

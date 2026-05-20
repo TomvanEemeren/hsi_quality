@@ -46,6 +46,46 @@ def plot_edge_pixels(satobj: Hypso2, grd: GRD, save: bool = False):
     else:
         plt.show()
 
+def plot_normal(satobj, grd: GRD, save: bool = False):
+    cube = satobj.l1d_cube.values
+    cloud_mask = satobj.cloud_mask
+    
+    edge_pixels, img = grd.compute_edge_pixels(cube, cloud_mask)
+
+    edges = grd.compute_edges(edge_pixels, img)
+
+    filtered_edges = grd.filter_edges(edges, img)
+
+    refined_edges = grd.refine_sub_pixels(filtered_edges, img)
+
+    selected_edge = grd.select_edge(refined_edges)
+    normal = selected_edge["normal"]
+    tangent = selected_edge["tangent"]
+
+    all_rows = np.concatenate([normal[0], tangent[0]])
+    all_cols = np.concatenate([normal[1], tangent[1]])
+    pad = 15
+    r0 = max(0, int(np.floor(all_rows.min() - pad)))
+    r1 = min(img.shape[0], int(np.ceil(all_rows.max() + pad)))
+    c0 = max(0, int(np.floor(all_cols.min() - pad)))
+    c1 = min(img.shape[1], int(np.ceil(all_cols.max() + pad)))
+
+    fig, ax = plt.subplots(figsize=(4,4))
+    ax.imshow(img, cmap="gray", aspect="equal")
+    ax.set_xlim(c0, c1)
+    ax.set_ylim(r1, r0)
+    ax.plot(normal[1], normal[0], color="deepskyblue", linewidth=2, label="Normal")
+    ax.plot(tangent[1], tangent[0], color="red", linewidth=2, label="Edge")
+    ax.axis("off")
+    if save:
+        target = satobj.capture_target
+        base_dir = Path(PLOTS_DIR) / target / "fwhm"
+        base_dir.mkdir(parents=True, exist_ok=True)
+        fig.savefig(base_dir / f"normal.png", bbox_inches="tight")
+        plt.close(fig)
+    else:
+        plt.show()
+
 def plot_esf(satobj, grd: GRD, band: int = 40, save: bool = False):
     cube = satobj.l1d_cube.values
     cloud_mask = satobj.cloud_mask
@@ -56,9 +96,9 @@ def plot_esf(satobj, grd: GRD, band: int = 40, save: bool = False):
 
     filtered_edges = grd.filter_edges(edges, img)
 
-    edges_normal = grd.compute_edge_normal(filtered_edges)
+    refined_edges = grd.refine_sub_pixels(filtered_edges, img)
 
-    selected_edge = grd.select_edge(edges_normal)
+    selected_edge = grd.select_edge(refined_edges)
     line = selected_edge["normal"]
 
     values = map_coordinates(cube[:, :, band], line, order=1, mode="nearest")
@@ -94,9 +134,9 @@ def plot_lsf(satobj, grd: GRD, band: int = 40, save: bool = False):
 
     filtered_edges = grd.filter_edges(edges, img)
 
-    edges_normal = grd.compute_edge_normal(filtered_edges)
+    refined_edges = grd.refine_sub_pixels(filtered_edges, img)
 
-    selected_edge = grd.select_edge(edges_normal)
+    selected_edge = grd.select_edge(refined_edges)
     line = selected_edge["normal"]
 
     values = map_coordinates(cube[:, :, band], line, order=1, mode="nearest")
@@ -135,9 +175,9 @@ def plot_fwhm(satobj, grd: GRD, band: int = 40, save: bool = False):
 
     filtered_edges = grd.filter_edges(edges, img)
 
-    edges_normal = grd.compute_edge_normal(filtered_edges)
+    refined_edges = grd.refine_sub_pixels(filtered_edges, img)
 
-    selected_edge = grd.select_edge(edges_normal)
+    selected_edge = grd.select_edge(refined_edges)
     line = selected_edge["normal"]
 
     values = map_coordinates(cube[:, :, band], line, order=1, mode="nearest")
