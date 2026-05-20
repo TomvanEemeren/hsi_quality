@@ -37,7 +37,7 @@ def plot_metric(dataset: Dataset, metric: Metric, resampler: Resampler, save: bo
 def calculate_scores(dataset: Dataset, metric: Metric, resampler: Resampler):
     dataset = dataset.sort(by="off_nadir")
 
-    scores = pd.DataFrame(columns=["location", "off_nadir", "score"])
+    scores = pd.DataFrame(columns=["location", "off_nadir", "score", "fwhm", "gsd"])
     if metric.name in ["GRD"]:
         for idx, (satobj, metadata) in enumerate(tqdm(dataset, desc=f"Calculating {metric}", leave=False)):
             angle = metadata["off_nadir"]
@@ -51,8 +51,10 @@ def calculate_scores(dataset: Dataset, metric: Metric, resampler: Resampler):
             
             score, info = metric.calculate(cube, cloud_mask, metadata)
 
+            fwhm = info["fwhm"]
+            gsd = info["gsd"]
             scores = pd.concat(
-                [scores, pd.DataFrame([{"location": location, "off_nadir": angle, "score": score}])],
+                [scores, pd.DataFrame([{"location": location, "off_nadir": angle, "score": score, "fwhm": fwhm, "gsd": gsd}])],
                 ignore_index=True,
             )
 
