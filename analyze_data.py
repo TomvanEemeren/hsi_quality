@@ -8,7 +8,8 @@ sys.path.append(path)
 path = os.path.abspath(os.path.join(os.getcwd(),"src","hypso"))
 sys.path.append(path)
 
-from hsi_quality.data import Dataset, Storage, Resampler
+from hsi_quality.data import Dataset, Storage
+from hsi_quality.analysis import Resampler
 from hsi_quality.plotting import select_box, intersect_captures
 from hsi_quality.plotting import plot_metric, plot_resampled_images, plot_full_images, plot_cloud_images
 from hsi_quality.metrics import MeanSSIM, MvSSIM, QLambda, GRD

@@ -5,7 +5,8 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 from matplotlib.colors import ListedColormap
 
-from hsi_quality.data import Dataset, Resampler
+from hsi_quality.data import Dataset
+from hsi_quality.analysis import Resampler
 from hsi_quality.utils import normalize_cube
 from hsi_quality import RESULTS_DIR
 

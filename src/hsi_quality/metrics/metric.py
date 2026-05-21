@@ -3,7 +3,7 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 from scipy.ndimage import gaussian_filter
 
-from hsi_quality.data import Resampler
+from hsi_quality.analysis import Resampler
 from hsi_quality import RESULTS_DIR
 
 from hypso import Hypso2

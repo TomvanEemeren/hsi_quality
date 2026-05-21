@@ -2,7 +2,8 @@ from tqdm import tqdm
 from pathlib import Path
 from matplotlib import pyplot as plt
 
-from hsi_quality.data import Dataset, Resampler
+from hsi_quality.data import Dataset
+from hsi_quality.analysis import Resampler
 from hsi_quality import RESULTS_DIR
 
 

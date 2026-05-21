@@ -24,14 +24,5 @@ Qlambda:
 
 # GRD
 GRD:
-  cloud_margin: 3
   length: 11
   num_interp: 1000
-  min_len: 5
-  max_len: 50
-  alpha: 3.0
-  beta: 0.1
-  gamma: 3.0
-  sample_dist: 10
-  low_threshold: 0.1
-  high_threshold: 0.4
