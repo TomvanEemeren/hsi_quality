@@ -1,10 +1,13 @@
 import numpy as np
+from tqdm import tqdm
 from pathlib import Path
 from matplotlib import pyplot as plt
 from scipy.ndimage import map_coordinates
 
+from .edge_plots import plot_edge
+from hsi_quality.data import Dataset
 from hsi_quality.metrics import GRD
-from hsi_quality.analysis import Edge
+from hsi_quality.analysis import EdgeDetector, Edge
 from hsi_quality import RESULTS_DIR
 
 from hypso import Hypso2
@@ -13,6 +16,8 @@ from hypso import Hypso2
 def plot_esf(satobj: Hypso2, edge: Edge, grd: GRD, band: int = 40, save: bool = False):
     cube = satobj.l1d_cube.values
     line = edge.normal
+    target = edge.location
+    name = edge.name
 
     values = map_coordinates(cube[:, :, band], line, order=1, mode="nearest")
 
@@ -29,10 +34,11 @@ def plot_esf(satobj: Hypso2, edge: Edge, grd: GRD, band: int = 40, save: bool = 
     ax.legend()
 
     if save:
-        target = satobj.capture_target
-        base_dir = Path(RESULTS_DIR) / target / "fwhm"
+        base_dir = Path(RESULTS_DIR) / target / "grd" / name
         base_dir.mkdir(parents=True, exist_ok=True)
-        fig.savefig(base_dir / f"esf.png", bbox_inches="tight")
+        path = base_dir / f"esf"
+        fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight")
+        fig.savefig(path.with_suffix(".png"), bbox_inches="tight")
         plt.close(fig)
     else:
         plt.show()
@@ -40,6 +46,8 @@ def plot_esf(satobj: Hypso2, edge: Edge, grd: GRD, band: int = 40, save: bool = 
 def plot_lsf(satobj: Hypso2, edge: Edge, grd: GRD, band: int = 40, save: bool = False):
     cube = satobj.l1d_cube.values
     line = edge.normal
+    target = edge.location
+    name = edge.name
 
     values = map_coordinates(cube[:, :, band], line, order=1, mode="nearest")
 
@@ -58,10 +66,11 @@ def plot_lsf(satobj: Hypso2, edge: Edge, grd: GRD, band: int = 40, save: bool = 
     ax.grid()
 
     if save:
-        target = satobj.capture_target
-        base_dir = Path(RESULTS_DIR) / target / "fwhm"
+        base_dir = Path(RESULTS_DIR) / target / "grd" / name
         base_dir.mkdir(parents=True, exist_ok=True)
-        fig.savefig(base_dir / f"lsf.png", bbox_inches="tight")
+        path = base_dir / f"lsf"
+        fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight")
+        fig.savefig(path.with_suffix(".png"), bbox_inches="tight")
         plt.close(fig)
     else:
         plt.show()
@@ -69,6 +78,8 @@ def plot_lsf(satobj: Hypso2, edge: Edge, grd: GRD, band: int = 40, save: bool = 
 def plot_fwhm(satobj: Hypso2, edge: Edge, grd: GRD, band: int = 40, save: bool = False):
     cube = satobj.l1d_cube.values
     line = edge.normal
+    target = edge.location
+    name = edge.name
 
     values = map_coordinates(cube[:, :, band], line, order=1, mode="nearest")
 
@@ -98,10 +109,38 @@ def plot_fwhm(satobj: Hypso2, edge: Edge, grd: GRD, band: int = 40, save: bool =
     ax.grid()
 
     if save:
-        target = satobj.capture_target
-        base_dir = Path(RESULTS_DIR) / target / "fwhm"
+        base_dir = Path(RESULTS_DIR) / target / "grd" / name
         base_dir.mkdir(parents=True, exist_ok=True)
-        fig.savefig(base_dir / f"fwhm.png", bbox_inches="tight")
+        path = base_dir / f"fwhm"
+        fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight")
+        fig.savefig(path.with_suffix(".png"), bbox_inches="tight")
         plt.close(fig)
     else:
         plt.show()
+
+def make_grd_plots(dataset: Dataset, ed: EdgeDetector, grd: GRD, save: bool = False):
+    reference_edge = None
+    for idx, (satobj, metadata) in enumerate(tqdm(dataset, desc=f"Plotting edges", leave=False)):
+        cloud_mask = satobj.cloud_mask
+
+        cloud_coverage = np.mean(cloud_mask == 2) * 100
+        if cloud_coverage > 5:
+            continue
+        
+        edges, _, img = ed.detect_edges(satobj)
+        if len(edges) == 0:
+            continue
+
+        if reference_edge is None:
+            reference_edge = ed.select_edge(edges)
+            edge = reference_edge
+        else:
+            edge = ed.find_closest_edge(edges, reference_edge.longitude, reference_edge.latitude)
+
+        plot_edge(edge, img, save=save)
+
+        plot_esf(satobj, edge, grd, band=40, save=save)
+
+        plot_lsf(satobj, edge, grd, band=40, save=save)
+
+        plot_fwhm(satobj, edge, grd, band=40, save=save)

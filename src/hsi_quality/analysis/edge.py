@@ -20,6 +20,8 @@ class Edge:
     angle: float = None
     longitude: float = None
     latitude: float = None
+    location: str = None
+    name: str = None
 
 
 class EdgeDetector:
@@ -54,6 +56,10 @@ class EdgeDetector:
         filtered_edges = self._filter_edges(img, edges)
 
         refined_edges = self.refine_sub_pixels(img, filtered_edges)
+
+        for edge in refined_edges:
+            edge.location = satobj.capture_target
+            edge.name = satobj.capture_name
 
         return refined_edges, edge_pixels, img
 

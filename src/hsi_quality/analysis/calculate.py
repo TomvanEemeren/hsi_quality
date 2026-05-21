@@ -34,7 +34,7 @@ def calculate_scores(dataset: Dataset, metric: Metric, resampler: Resampler = No
             if len(edges) == 0:
                 continue
 
-            if idx == 0:
+            if reference_edge is None:
                 reference_edge = ed.select_edge(edges)
                 edge = reference_edge
             else:
