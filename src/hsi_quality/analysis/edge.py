@@ -22,6 +22,8 @@ class Edge:
     latitude: float = None
     location: str = None
     name: str = None
+    bright_perc: float = None
+    dark_perc: float = None
 
 
 class EdgeDetector:
@@ -55,7 +57,7 @@ class EdgeDetector:
 
         filtered_edges = self._filter_edges(img, edges)
 
-        refined_edges = self.refine_sub_pixels(img, filtered_edges)
+        refined_edges = self._refine_sub_pixels(img, filtered_edges)
 
         for edge in refined_edges:
             edge.location = satobj.capture_target
@@ -65,10 +67,17 @@ class EdgeDetector:
 
     def select_edge(self, edges: list[Edge]):
         if len(edges) == 0:
+            return None
+
+        ranked_edges = sorted(edges, key=self._edge_score, reverse=True)
+        return ranked_edges[0]
+    
+    def select_edges(self, edges: list[Edge], num_edges: int = 4):
+        if len(edges) == 0:
             return []
 
-        ranked_edges = sorted(edges, key=lambda edge: edge.magnitudes.mean(), reverse=True)
-        return ranked_edges[0] if len(ranked_edges) > 0 else None
+        ranked_edges = sorted(edges, key=self._edge_score, reverse=True)
+        return ranked_edges[:num_edges]
 
     def find_closest_edge(self, edges: list[Edge], longitude: float, latitude: float):
         if len(edges) == 0:
@@ -162,16 +171,21 @@ class EdgeDetector:
             bright_mean = bright_vals.mean()
             dark_mean = dark_vals.mean()
             sigma_grid = np.std(np.concatenate([bright_vals, dark_vals]))
+            bright_perc = np.percentile(bright_vals, 10)
+            dark_perc = np.percentile(dark_vals, 90)
+
+            edge.bright_perc = bright_perc
+            edge.dark_perc = dark_perc
 
             if (bright_mean > self.alpha * dark_mean and
                 np.std(bright_vals) < self.beta * sigma_grid and
                 np.std(dark_vals) < self.beta * sigma_grid and
-                np.percentile(bright_vals, 10) > self.gamma * np.percentile(dark_vals, 90)):
+                bright_perc > self.gamma * dark_perc):
                 filtered_edges.append(edge)
 
         return filtered_edges
     
-    def refine_sub_pixels(self, img: np.ndarray, filtered_edges: list[Edge]):
+    def _refine_sub_pixels(self, img: np.ndarray, filtered_edges: list[Edge]):
         offsets = np.array([-3, -2, -1, 0, 1, 2, 3], dtype=float)
 
         refined_edges = []
@@ -236,3 +250,19 @@ class EdgeDetector:
             refined_edges.append(edge)
 
         return refined_edges
+    
+    def _edge_score(self, edge: Edge):
+        bright_perc = edge.bright_perc
+        dark_perc = edge.dark_perc
+        magnitudes = edge.magnitudes
+
+        if bright_perc is None or dark_perc is None:
+            return -np.inf
+
+        contrast = bright_perc - dark_perc
+        scale = np.abs(bright_perc) + np.abs(dark_perc) + 1e-12
+        contrast_score = contrast / scale
+
+        magnitude_score = np.mean(magnitudes)
+
+        return contrast_score * magnitude_score
