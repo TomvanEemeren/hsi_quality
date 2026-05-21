@@ -31,6 +31,8 @@ def calculate_scores(dataset: Dataset, metric: Metric, resampler: Resampler = No
                 continue
             
             edges, _, _ = ed.detect_edges(satobj)
+            if len(edges) == 0:
+                continue
 
             if idx == 0:
                 reference_edge = ed.select_edge(edges)

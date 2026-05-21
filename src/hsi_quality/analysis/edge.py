@@ -62,7 +62,7 @@ class EdgeDetector:
             return []
 
         ranked_edges = sorted(edges, key=lambda edge: edge.magnitudes.mean(), reverse=True)
-        return ranked_edges[1] if len(ranked_edges) > 1 else None
+        return ranked_edges[0] if len(ranked_edges) > 0 else None
 
     def find_closest_edge(self, edges: list[Edge], longitude: float, latitude: float):
         if len(edges) == 0:
