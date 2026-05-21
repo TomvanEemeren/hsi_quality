@@ -40,6 +40,9 @@ def calculate_scores(dataset: Dataset, metric: Metric, resampler: Resampler = No
             else:
                 edge = ed.find_closest_edge(edges, reference_edge.longitude, reference_edge.latitude)
 
+            if edge is None:
+                continue
+
             score, info = metric.calculate(cube, edge, metadata)
 
             fwhm = info["fwhm"]

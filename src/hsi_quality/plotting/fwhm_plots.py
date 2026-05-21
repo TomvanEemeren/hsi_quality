@@ -137,6 +137,9 @@ def make_grd_plots(dataset: Dataset, ed: EdgeDetector, grd: GRD, save: bool = Fa
         else:
             edge = ed.find_closest_edge(edges, reference_edge.longitude, reference_edge.latitude)
 
+        if edge is None:
+            continue
+
         plot_edge(edge, img, save=save)
 
         plot_esf(satobj, edge, grd, band=40, save=save)
