@@ -43,6 +43,8 @@ class EdgeDetector:
         self.beta = self.params.get("beta", 1.0)
         self.gamma = self.params.get("gamma", 1.0)
 
+        self.dist_threshold = self.params.get("dist_threshold", 0.25)
+
     def detect_edges(self, satobj: Hypso2):
         cube = satobj.l1d_cube.values
         cloud_mask = satobj.cloud_mask
@@ -83,8 +85,14 @@ class EdgeDetector:
         if len(edges) == 0:
             return None
 
-        closest_edge = min(edges, key=lambda edge: np.hypot(edge.longitude - longitude, edge.latitude - latitude))
-        return closest_edge
+        dist = [np.hypot(edge.longitude - longitude, edge.latitude - latitude) for edge in edges]
+        closest_edge = edges[np.argmin(dist)]
+
+        min_dist = np.min(dist)
+        if min_dist < self.dist_threshold:
+            return closest_edge
+
+        return None
 
     def _compute_edge_pixels(self, img: np.ndarray, cloud_mask: np.ndarray):
 
@@ -255,6 +263,7 @@ class EdgeDetector:
         bright_perc = edge.bright_perc
         dark_perc = edge.dark_perc
         magnitudes = edge.magnitudes
+        angle = edge.angle
 
         if bright_perc is None or dark_perc is None:
             return -np.inf
@@ -265,4 +274,6 @@ class EdgeDetector:
 
         magnitude_score = np.mean(magnitudes)
 
-        return contrast_score * magnitude_score
+        angle_score = np.cos(angle)
+
+        return contrast_score * magnitude_score * angle_score

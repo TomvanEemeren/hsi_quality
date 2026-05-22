@@ -18,4 +18,9 @@ def aggregate_scores(targets: list[str] | str, metric: str):
             scores = pd.read_csv(csv_file)
             aggregated_scores = pd.concat([aggregated_scores, scores], ignore_index=True)
 
+    # Normalize scores per location
+    idx_min = aggregated_scores.groupby("location")["off_nadir"].idxmin()
+    baseline = aggregated_scores.loc[idx_min].set_index("location")["score"]
+    aggregated_scores["norm_score"] = aggregated_scores["score"] / aggregated_scores["location"].map(baseline)
+
     return aggregated_scores
