@@ -29,8 +29,6 @@ class Pipeline:
 
             # Anomaly detection
             has_error = self._detect_anomalies(satobj, metadata, areas)
-            if has_error:
-                logger.warning(f"Detected anomaly in {satobj.capture_name}")
 
         return satobj, has_error
 
@@ -55,65 +53,68 @@ class Pipeline:
     def _detect_anomalies(self, satobj: Hypso2, metadata: pd.Series, areas: np.ndarray) -> bool:
         has_error = False
         cube = satobj.l1d_cube.values
+        name = satobj.capture_name
+        print(f"Checking {name} for anomalies...")
 
         # Sun glint causes pixels to saturate
         sun_glint = metadata["overexposed_samples_percentage"] > self.cfg["overexposed_samples_threshold"]
+        if sun_glint:
+            logger.warning(f"Sun glint in {name}")
 
         # Loss of orientation causes target misalignment
         star_tracker_blinded = metadata["star_tracker_blinded_percentage"] > self.cfg["star_tracker_blinded_threshold"]
+        if star_tracker_blinded:
+            logger.warning(f"Star tracker blinded in {name}")
 
         # Some off-nadir angles are unrealistic
         invalid_angle = metadata["off_nadir"] > self.cfg["off_nadir_threshold"] 
+        if invalid_angle:
+            logger.warning(f"Invalid off-nadir angle in {name}")
 
         # Sometimes the satellite captures a different area than the other captures in the same location
-        invalid_area = self._compare_area(metadata, areas)
+        invalid_area = self._compare_target(satobj, metadata)
+        if invalid_area:
+            logger.warning(f"Invalid target in {name}")
 
         # Downlink errors cause strange patterns in the image
         downlink_error = self._has_downlink_error(cube)
+        if downlink_error:
+            logger.warning(f"Downlink error in {name}")
 
         has_error = sun_glint or star_tracker_blinded or invalid_angle or invalid_area or downlink_error
 
         return has_error
     
-    def _compare_area(self, metadata: pd.Series, areas: np.ndarray) -> bool:
-        aoi = metadata["area"]
+    def _compare_target(self, satobj: Hypso2, metadata: pd.Series) -> bool:
+        target_longitude = metadata["target_longitude"]
+        target_latitude = metadata["target_latitude"]
 
-        mean = np.mean(areas)
-        std = np.std(areas)
+        if np.isnan(target_longitude) or np.isnan(target_latitude):
+            return False
+        
+        actual_longitude = np.mean(satobj.longitudes)
+        actual_latitude = np.mean(satobj.latitudes)
 
-        return abs(aoi - mean) > 2 * std
+        deviation = np.sqrt((target_longitude - actual_longitude) ** 2 + (target_latitude - actual_latitude) ** 2)
+
+        print(f"Target deviation: {deviation:.4f} degrees")
+
+        return deviation > self.cfg["target_deviation_threshold"]
 
     def _has_downlink_error(self, cube: np.ndarray) -> bool:
         pixel_var = np.var(cube, axis=2)
 
-        median_var = np.median(pixel_var)
-        mad = np.median(np.abs(pixel_var - median_var))
+        p99 = np.percentile(pixel_var, 99)
+        p50 = np.median(pixel_var)
 
-        z = (pixel_var - median_var) / (mad + 1e-8)
+        tail_scale = p99 - p50 + 1e-8
 
-        # Unusually high variance
-        if np.any(z > 30):
+        normalized = (pixel_var - p50) / tail_scale
+
+        # Catch both localized corruption and corruption affecting most/all of the image.
+        max_score = np.max(normalized)
+
+        if max_score > self.cfg["downlink_threshold_max"]:
             return True
-
-        # Difference between neighboring rows
-        vert_diff = np.diff(cube, axis=0)  # shape (H, W, C)
-
-        # Magnitude of vertical change per column
-        col_score = np.mean(np.abs(vert_diff), axis=(0, 2))  # (W,)
-
-        median = np.median(col_score)
-        mad = np.median(np.abs(col_score - median))
-
-        z = (col_score - median) / (mad + 1e-8)
-
-        # Unusually low variance
-        anomalous = z < -4
-
-        min_run = 5
-        run = 0
-        for a in anomalous:
-            run = run + 1 if a else 0
-            if run >= min_run:
-                return True
 
         return False

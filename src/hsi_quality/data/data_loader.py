@@ -78,7 +78,13 @@ class DataLoader:
 
         if metadata_list:
             metadata_path = self.raw_dir / "metadata.csv"
-            pd.DataFrame(metadata_list).to_csv(metadata_path, index=False)
+            new_metadata = pd.DataFrame(metadata_list)
+
+            if metadata_path.exists():
+                existing_metadata = pd.read_csv(metadata_path)
+                new_metadata = pd.concat([existing_metadata, new_metadata], ignore_index=True)
+
+            new_metadata.to_csv(metadata_path, index=False)
             logger.debug(f"Saved metadata to {metadata_path}")
 
     def _create_directories(self):
