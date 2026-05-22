@@ -263,6 +263,7 @@ class EdgeDetector:
         bright_perc = edge.bright_perc
         dark_perc = edge.dark_perc
         magnitudes = edge.magnitudes
+        angle = edge.angle
 
         if bright_perc is None or dark_perc is None:
             return -np.inf
@@ -273,4 +274,6 @@ class EdgeDetector:
 
         magnitude_score = np.mean(magnitudes)
 
-        return contrast_score * magnitude_score
+        angle_score = np.cos(angle)
+
+        return contrast_score * magnitude_score * angle_score
