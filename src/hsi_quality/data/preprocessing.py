@@ -55,7 +55,6 @@ class Pipeline:
         has_error = False
         cube = satobj.l1d_cube.values
         name = satobj.capture_name
-        print(f"Checking {name} for anomalies...")
 
         # Sun glint causes pixels to saturate
         sun_glint = metadata["overexposed_samples_percentage"] > self.cfg["overexposed_samples_threshold"]
@@ -97,8 +96,6 @@ class Pipeline:
         actual_latitude = np.mean(satobj.latitudes)
 
         deviation = np.sqrt((target_longitude - actual_longitude) ** 2 + (target_latitude - actual_latitude) ** 2)
-
-        print(f"Target deviation: {deviation:.4f} degrees")
 
         return deviation > self.cfg["target_deviation_threshold"]
 
