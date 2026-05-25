@@ -1,6 +1,7 @@
+import logging
 import numpy as np
 import pandas as pd
-import logging
+from scipy.signal import savgol_filter
 
 from hypso import Hypso2
 
@@ -102,19 +103,17 @@ class Pipeline:
         return deviation > self.cfg["target_deviation_threshold"]
 
     def _has_downlink_error(self, cube: np.ndarray) -> bool:
-        pixel_var = np.var(cube, axis=2)
+        cube = cube[:,:,10:]
+        smooth = savgol_filter(cube, 11, 2, axis=2)
 
-        p99 = np.percentile(pixel_var, 99)
-        p50 = np.median(pixel_var)
+        residual = cube - smooth
 
-        tail_scale = p99 - p50 + 1e-8
+        signal_power = np.mean(smooth**2, axis=2)
 
-        normalized = (pixel_var - p50) / tail_scale
+        noise_power = np.mean(residual**2, axis=2)
 
-        # Catch both localized corruption and corruption affecting most/all of the image.
-        max_score = np.max(normalized)
+        normalized_scores = noise_power / (signal_power + 1e-8)
 
-        if max_score > self.cfg["downlink_threshold_max"]:
-            return True
+        image_score = np.percentile(normalized_scores, 99)
 
-        return False
+        return image_score > self.cfg["downlink_error_threshold"]
