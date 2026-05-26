@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from pathlib import Path    
 
@@ -20,7 +21,8 @@ def aggregate_scores(targets: list[str] | str, metric: str):
 
     # Normalize scores per location
     idx_min = aggregated_scores.groupby("location")["off_nadir"].idxmin()
-    baseline = aggregated_scores.loc[idx_min].set_index("location")["score"]
+    min_rows = aggregated_scores.loc[idx_min].set_index("location")
+    baseline = min_rows["score"].astype(float) * np.cos(np.deg2rad(min_rows["off_nadir"].astype(float)))
     aggregated_scores["norm_score"] = aggregated_scores["score"] / aggregated_scores["location"].map(baseline)
 
     return aggregated_scores

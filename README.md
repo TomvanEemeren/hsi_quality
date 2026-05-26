@@ -13,23 +13,7 @@ cd hsi_quality
 ```
 
 ## Step 2
-Setup a virtual environment ***or*** a conda environment.
-### Setting up a virtual environment
-Create the virtual environment:
-```
-python3 -m venv .venv
-```
-Activate the virtual environment:
-```
-source .venv/bin/activate
-```
-Install dependencies in the virtual environment:
-```
-pip install -r requirements.txt
-```
-
-### Setting up a conda environment
-Create the conda environment:
+Setup the conda environment:
 ```
 conda env create -f environment.yml
 ```
