@@ -28,7 +28,8 @@ def plot_full_images(dataset: Dataset, band: int = None, save: bool = False, mod
         else:
             raise ValueError("Invalid mode. Use 'rgb' or 'band'.")
 
-        fig, ax = plt.subplots()
+        mm = 1/25.4
+        fig, ax = plt.subplots(figsize=(74*mm, 74*mm))
         ax.imshow(image, aspect=1/8)
         ax.axis("off")
         if save:
@@ -38,9 +39,10 @@ def plot_full_images(dataset: Dataset, band: int = None, save: bool = False, mod
             elif mode == "band" and band is not None:
                 base_dir = Path(RESULTS_DIR) / target / f"band_{band}"
             base_dir.mkdir(parents=True, exist_ok=True)
-            output_path = base_dir / f"{capture_name}.png"
 
-            fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
+            out_path = base_dir / f"{capture_name}"
+            fig.savefig(out_path.with_suffix(".pdf"), bbox_inches="tight", pad_inches=0, dpi=300)
+            fig.savefig(out_path.with_suffix(".png"), bbox_inches="tight", pad_inches=0, dpi=300)
             plt.close(fig)
         else:
             plt.show()
@@ -60,15 +62,17 @@ def plot_resampled_images(dataset: Dataset, resampler: Resampler, band: int = No
         else:
             raise ValueError("Invalid mode. Use 'rgb' or 'band'.")
 
-        fig, ax = plt.subplots()
+        mm = 1/25.4
+        fig, ax = plt.subplots(figsize=(30*mm, 30*mm))
         ax.imshow(image)
         ax.axis("off")
         if save:
             capture_name = satobj.capture_name
             base_dir = Path(RESULTS_DIR) / target / "resampled"
             base_dir.mkdir(parents=True, exist_ok=True)
-            output_path = base_dir / f"{capture_name}.png"
-            fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
+            out_path = base_dir / f"{capture_name}.png"
+            fig.savefig(out_path.with_suffix(".pdf"), bbox_inches="tight", pad_inches=0, dpi=300)
+            fig.savefig(out_path.with_suffix(".png"), bbox_inches="tight", pad_inches=0, dpi=300)
             plt.close(fig)
         else:
             plt.show()
@@ -105,7 +109,7 @@ def get_rgb_image(satobj: Hypso2, cube: xr.DataArray):
 
     return rotated_img
 
-def plot_cloud_images(dataset: Dataset, resampler: Resampler = None, save: bool = False):
+def plot_cloud_images(dataset: Dataset, save: bool = False):
     target = dataset["location_description"].unique()[0]
 
     classes = np.array([0, 1, 2])
@@ -116,25 +120,51 @@ def plot_cloud_images(dataset: Dataset, resampler: Resampler = None, save: bool 
 
     for idx in tqdm(range(len(dataset)), desc="Plotting cloud masks", leave=False):
         satobj, _ = dataset[idx]
-        cloud_mask, aspect = None, None
-
-        if resampler is not None:
-            _, cloud_mask = resampler.resample_capture(satobj)
-        else:
-            cloud_mask = satobj.cloud_mask.values
-            aspect = 1/8
+        cloud_mask = satobj.cloud_mask.values
 
         rotated_mask = np.rot90(cloud_mask, k=1)
 
-        fig, ax = plt.subplots()
-        ax.imshow(rotated_mask, cmap=cmap, vmin=vmin, vmax=vmax, aspect=aspect)
+        mm = 1/25.4
+        fig, ax = plt.subplots(figsize=(74*mm, 74*mm))
+        ax.imshow(rotated_mask, cmap=cmap, vmin=vmin, vmax=vmax, aspect=1/8)
         ax.axis("off")
         if save:
             capture_name = satobj.capture_name
             base_dir = Path(RESULTS_DIR) / target / "cloud_masks"
             base_dir.mkdir(parents=True, exist_ok=True)
-            output_path = base_dir / f"{capture_name}.png"
-            fig.savefig(output_path, bbox_inches="tight", pad_inches=0, dpi=300)
+            out_path = base_dir / f"{capture_name}"
+            fig.savefig(out_path.with_suffix(".pdf"), bbox_inches="tight", pad_inches=0, dpi=300)
+            fig.savefig(out_path.with_suffix(".png"), bbox_inches="tight", pad_inches=0, dpi=300)
+            plt.close(fig)
+        else:
+            plt.show()
+
+def plot_resampled_cloud_images(dataset: Dataset, resampler: Resampler, save: bool = False):
+    target = dataset["location_description"].unique()[0]
+
+    classes = np.array([0, 1, 2])
+    cmap_base = plt.get_cmap("tab10")
+    colors = [cmap_base(i) for i in range(len(classes))]
+    cmap = ListedColormap(colors)
+    vmin, vmax = classes.min(), classes.max()
+
+    for idx in tqdm(range(len(dataset)), desc="Plotting cloud masks", leave=False):
+        satobj, _ = dataset[idx]
+        _, cloud_mask = resampler.resample_capture(satobj)
+
+        rotated_mask = np.rot90(cloud_mask, k=1)
+
+        mm = 1/25.4
+        fig, ax = plt.subplots(figsize=(30*mm, 30*mm))
+        ax.imshow(rotated_mask, cmap=cmap, vmin=vmin, vmax=vmax)
+        ax.axis("off")
+        if save:
+            capture_name = satobj.capture_name
+            base_dir = Path(RESULTS_DIR) / target / "resampled_cloud_masks"
+            base_dir.mkdir(parents=True, exist_ok=True)
+            out_path = base_dir / f"{capture_name}"
+            fig.savefig(out_path.with_suffix(".pdf"), bbox_inches="tight", pad_inches=0, dpi=300)
+            fig.savefig(out_path.with_suffix(".png"), bbox_inches="tight", pad_inches=0, dpi=300)
             plt.close(fig)
         else:
             plt.show()

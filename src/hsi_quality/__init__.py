@@ -7,10 +7,10 @@ rcParams = {
     'axes.labelsize': 7,
     'xtick.labelsize': 6,
     'ytick.labelsize': 6,
-    'legend.fontsize': 7,
+    'legend.fontsize': 6,
     'legend.title_fontsize': 7,
     'figure.titlesize': 7,
-    # 'lines.linewidth': 0.8,
+    'lines.linewidth': 1.0,
     'lines.markersize': 3,
 }
 
