@@ -18,9 +18,15 @@ MvSSIM:
   C2: 0.0009
   C3: 0.00045
 
-# Qlambda
-Qlambda:
+# SSIM-Lambda
+SSIMLambda:
   size: 11
+  alpha: 1.0
+  beta: 1.0
+  gamma: 1.0
+  C1: 0.0001
+  C2: 0.0009
+  C3: 0.00045
 
 # GRD
 GRD:

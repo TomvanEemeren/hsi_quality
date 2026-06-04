@@ -3,8 +3,8 @@ from pathlib import Path
 
 # Parameters for plotting
 rcParams = {
-    'axes.titlesize': 7,
-    'axes.labelsize': 7,
+    'axes.titlesize': 6,
+    'axes.labelsize': 6,
     'xtick.labelsize': 6,
     'ytick.labelsize': 6,
     'legend.fontsize': 6,

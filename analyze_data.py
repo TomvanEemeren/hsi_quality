@@ -13,7 +13,7 @@ from hsi_quality.analysis import Resampler, EdgeDetector, calculate_scores
 from hsi_quality.plotting import select_box, intersect_captures
 from hsi_quality.plotting import plot_resampled_images, plot_full_images, plot_metric, plot_resampled_cloud_images
 from hsi_quality.plotting import make_grd_plots
-from hsi_quality.metrics import MeanSSIM, MvSSIM, QLambda, GRD
+from hsi_quality.metrics import MeanSSIM, MvSSIM, SSIMLambda, GRD
 from hsi_quality.utils import load_parameters
 
 def main():
@@ -67,7 +67,7 @@ def main():
         scores = calculate_scores(dataset, MeanSSIM(params=cfg["MeanSSIM"]), resampler=resampler, save=True)
         plot_metric(scores, save=True)
 
-        scores = calculate_scores(dataset, QLambda(params=cfg["Qlambda"]), resampler=resampler, save=True)
+        scores = calculate_scores(dataset, SSIMLambda(params=cfg["SSIMLambda"]), resampler=resampler, save=True)
         plot_metric(scores, save=True)
 
 if __name__ == "__main__":

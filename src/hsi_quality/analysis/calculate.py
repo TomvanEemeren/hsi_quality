@@ -53,7 +53,7 @@ def calculate_scores(dataset: Dataset, metric: Metric, resampler: Resampler = No
             )
 
 
-    elif metric.name in ["MvSSIM", "MeanSSIM", "QLambda"] and resampler is not None:
+    elif metric.name in ["MvSSIM", "MeanSSIM", "SSIMLambda"] and resampler is not None:
 
         reference = None
         for idx, (satobj, metadata) in enumerate(tqdm(dataset, desc=f"Calculating {metric}", leave=False)):
