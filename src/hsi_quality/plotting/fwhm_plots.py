@@ -25,20 +25,22 @@ def plot_esf(satobj: Hypso2, edge: Edge, grd: GRD, band: int = 40, save: bool = 
 
     x_interp = grd.get_x_interp()
 
-    fig, ax = plt.subplots(figsize=(5, 2))
-    ax.plot(x_interp, values_linear, "--", label="Edge response")
-    ax.plot(x_interp, esf, label="ESF fit")
-    ax.set_xlabel("Pixel along edge")
-    ax.set_ylabel("Reflectance")
-    ax.grid()
+    mm = 1/25.4
+    fig, ax = plt.subplots(figsize=(74*mm, 40*mm))
+    ax.plot(x_interp, values_linear, "--", label="Pixel values")
+    ax.plot(x_interp, esf, label="Fitted ESF")
+    ax.set_xlabel("Pixel position")
+    ax.set_ylabel(r"Reflectance, $R_{\text{TOA}}$, ($sr^{-1}$)")
+    ax.set_xlim([x_interp[0], x_interp[-1]])
+    ax.grid(True)
     ax.legend()
 
     if save:
         base_dir = Path(RESULTS_DIR) / target / "grd" / name
         base_dir.mkdir(parents=True, exist_ok=True)
         path = base_dir / f"esf"
-        fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight")
-        fig.savefig(path.with_suffix(".png"), bbox_inches="tight")
+        fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight", pad_inches=0, dpi=300)
+        fig.savefig(path.with_suffix(".png"), bbox_inches="tight", pad_inches=0, dpi=300)
         plt.close(fig)
     else:
         plt.show()
@@ -57,20 +59,22 @@ def plot_lsf(satobj: Hypso2, edge: Edge, grd: GRD, band: int = 40, save: bool = 
 
     x_interp = grd.get_x_interp()
 
-    fig, ax = plt.subplots(figsize=(5, 2))
+    mm = 1/25.4
+    fig, ax = plt.subplots(figsize=(74*mm, 40*mm))
     ax.plot(x_interp, esf_norm,label="Normalized ESF")
     ax.plot(x_interp, lsf_norm*0.5, label="Scaled LSF")
-    ax.set_xlabel("Pixel along edge")
+    ax.set_xlabel("Pixel position")
     ax.set_ylabel("Normalized ESF")
+    ax.set_xlim([x_interp[0], x_interp[-1]])
+    ax.grid(True)
     ax.legend()
-    ax.grid()
 
     if save:
         base_dir = Path(RESULTS_DIR) / target / "grd" / name
         base_dir.mkdir(parents=True, exist_ok=True)
         path = base_dir / f"lsf"
-        fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight")
-        fig.savefig(path.with_suffix(".png"), bbox_inches="tight")
+        fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight", pad_inches=0, dpi=300)
+        fig.savefig(path.with_suffix(".png"), bbox_inches="tight", pad_inches=0, dpi=300)
         plt.close(fig)
     else:
         plt.show()
@@ -91,9 +95,10 @@ def plot_fwhm(satobj: Hypso2, edge: Edge, grd: GRD, band: int = 40, save: bool =
 
     x_interp = grd.get_x_interp()
 
-    fig, ax = plt.subplots(figsize=(5, 2))
+    mm = 1/25.4
+    fig, ax = plt.subplots(figsize=(74*mm, 40*mm))
     ax.plot(x_interp, lsf_norm, label="Normalized LSF")
-    ax.set_xlabel("Pixel along edge")
+    ax.set_xlabel("Pixel position")
     ax.set_ylabel("Normalized LSF")
     ax.plot([x_interp[fwhm_0], x_interp[fwhm_1]], [0.5, 0.5], '--', label='FWHM')
     ax.plot([x_interp[fwhm_0], x_interp[fwhm_1]], [0.5, 0.5], 'kx')
@@ -101,19 +106,19 @@ def plot_fwhm(satobj: Hypso2, edge: Edge, grd: GRD, band: int = 40, save: bool =
         (x_interp[fwhm_1] + x_interp[fwhm_0]) / 2,
         0.7 * max(lsf_norm[fwhm_0], lsf_norm[fwhm_1]),
         f'{fwhm:6.3f}',
-        fontsize=8,
+        fontsize=7,
         ha='center',
         va='bottom',
     )
     ax.set_xlim([x_interp[fwhm_0] - 2, x_interp[fwhm_1] + 2])
-    ax.grid()
+    ax.grid(True)
 
     if save:
         base_dir = Path(RESULTS_DIR) / target / "grd" / name
         base_dir.mkdir(parents=True, exist_ok=True)
         path = base_dir / f"fwhm"
-        fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight")
-        fig.savefig(path.with_suffix(".png"), bbox_inches="tight")
+        fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight", pad_inches=0, dpi=300)
+        fig.savefig(path.with_suffix(".png"), bbox_inches="tight", pad_inches=0, dpi=300)
         plt.close(fig)
     else:
         plt.show()
