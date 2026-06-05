@@ -1,5 +1,5 @@
 # Anomaly detection parameters
-overexposed_samples_threshold: 5.5
+overexposed_samples_threshold: 5.0
 star_tracker_blinded_threshold: 90
 off_nadir_threshold: 90
 target_deviation_threshold: 1.0

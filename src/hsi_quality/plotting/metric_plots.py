@@ -15,17 +15,24 @@ def plot_metric(scores, save: bool = False):
     x = scores["off_nadir"].values
     y = scores["score"].values
 
-    fig, ax = plt.subplots(figsize=(2.5, 2))
-    ax.scatter(x, y, label="Data Points")
-    ax.set_xlabel("Off-Nadir Angle (degrees)")
-    ax.set_ylabel(f"{metric_name}")
+    plot_name = metric_name
+    if metric_name == "MeanSSIM":
+        plot_name = "MSSIM"
+    elif metric_name == "SSIMLambda":
+        plot_name = r"SSIM-$\lambda$"
+
+    mm = 1/25.4
+    fig, ax = plt.subplots(figsize=(40*mm, 30*mm))
+    ax.scatter(x, y)
+    ax.set_xlabel("Off-nadir angle (deg)")
+    ax.set_ylabel(f"{plot_name}")
     ax.grid(True)
     if save:
         base_dir = Path(RESULTS_DIR) / target
         base_dir.mkdir(parents=True, exist_ok=True)
         path = base_dir / metric_name
-        fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight")
-        fig.savefig(path.with_suffix(".png"), bbox_inches="tight")
+        fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight", pad_inches=0, dpi=300)
+        fig.savefig(path.with_suffix(".png"), bbox_inches="tight", pad_inches=0, dpi=300)
         plt.close(fig)
     else:
         plt.show()
