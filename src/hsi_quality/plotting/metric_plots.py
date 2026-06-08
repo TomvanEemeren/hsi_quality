@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from pathlib import Path
 from matplotlib import pyplot as plt
 from scipy.ndimage import gaussian_filter
@@ -8,6 +9,7 @@ from hsi_quality.analysis import Resampler
 from hsi_quality.metrics import Metric
 
 from hypso import Hypso2
+
 
 def plot_metric(scores, save: bool = False):
     metric_name = scores["metric"].iloc[0]
@@ -36,6 +38,54 @@ def plot_metric(scores, save: bool = False):
         plt.close(fig)
     else:
         plt.show()
+
+
+def plot_scores(scores: pd.DataFrame, save: bool = False):
+    location_map = {
+        "dubai": "Dubai",
+        "gobabeb": "Gobabeb",
+        "gulfofcalifornia": "Gulf of California",
+        "nile": "Nile",
+        "gulfOfOman1": "Gulf of Oman",
+        "aquawatchcoral": "Coral Bay",
+    }
+
+    metric_map = {
+        "GRD": "GRD",
+        "MeanSSIM": "MSSIM",
+        "MvSSIM": "MvSSIM",
+        "SSIMLambda": r"SSIM-$\lambda$",
+    }
+
+    metric = scores["metric"].iloc[0]
+
+    mm = 1 / 25.4
+    fig, axes = plt.subplots(2, 3, figsize=(149 * mm, 80 * mm), sharex=True, sharey=True)
+
+    for ax, location in zip(axes.flatten(), location_map.keys()):
+        subset = scores[scores["location"] == location]
+        ax.scatter(subset["off_nadir"], subset["score"])
+        ax.set_title(location_map[location])
+        ax.set_xticks(np.arange(0, 70, 10))
+        ax.grid(True, alpha=0.3)
+
+    for ax in axes[:,0]:
+        ax.set_ylabel(f"{metric_map.get(metric)} score")
+
+    for ax in axes[-1,:]:
+        ax.set_xlabel(r"Off-nadir angle, $\theta$, (deg)")
+
+    plt.tight_layout()
+    if save:
+        base_dir = Path(RESULTS_DIR) / "plots"
+        base_dir.mkdir(parents=True, exist_ok=True)
+        path = base_dir / f"{metric}"
+        fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight", pad_inches=0, dpi=300)
+        fig.savefig(path.with_suffix(".png"), bbox_inches="tight", pad_inches=0, dpi=300)
+        plt.close(fig)
+    else:
+        plt.show()
+
 
 def plot_blurred(satobj: Hypso2, metric: Metric, resampler: Resampler, band: int = 40, save: bool = False):
         cube = satobj.l1d_cube
