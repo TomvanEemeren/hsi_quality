@@ -124,6 +124,8 @@ def plot_fwhm(satobj: Hypso2, edge: Edge, grd: GRD, band: int = 40, save: bool =
         plt.show()
 
 def make_grd_plots(dataset: Dataset, ed: EdgeDetector, grd: GRD, save: bool = False):
+    dataset = dataset.sort(by="off_nadir")
+
     reference_edge = None
     for idx, (satobj, metadata) in enumerate(tqdm(dataset, desc=f"Plotting edges", leave=False)):
         cloud_mask = satobj.cloud_mask

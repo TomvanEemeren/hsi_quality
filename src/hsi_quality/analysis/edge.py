@@ -22,8 +22,7 @@ class Edge:
     latitude: float = None
     location: str = None
     name: str = None
-    bright_perc: float = None
-    dark_perc: float = None
+    score: float = None
 
 
 class EdgeDetector:
@@ -71,14 +70,14 @@ class EdgeDetector:
         if len(edges) == 0:
             return None
 
-        ranked_edges = sorted(edges, key=self._edge_score, reverse=True)
+        ranked_edges = self.rank_edges(edges)
         return ranked_edges[0]
     
     def select_edges(self, edges: list[Edge], num_edges: int = 4):
         if len(edges) == 0:
             return []
 
-        ranked_edges = sorted(edges, key=self._edge_score, reverse=True)
+        ranked_edges = self.rank_edges(edges)
         return ranked_edges[:num_edges]
 
     def find_closest_edge(self, edges: list[Edge], longitude: float, latitude: float):
@@ -182,13 +181,12 @@ class EdgeDetector:
             bright_perc = np.percentile(bright_vals, 10)
             dark_perc = np.percentile(dark_vals, 90)
 
-            edge.bright_perc = bright_perc
-            edge.dark_perc = dark_perc
+            cond1 = bright_mean > self.alpha * dark_mean
+            cond2 = np.std(bright_vals) < self.beta * sigma_grid
+            cond3 = np.std(dark_vals) < self.beta * sigma_grid
+            cond4 = bright_perc > self.gamma * dark_perc
 
-            if (bright_mean > self.alpha * dark_mean and
-                np.std(bright_vals) < self.beta * sigma_grid and
-                np.std(dark_vals) < self.beta * sigma_grid and
-                bright_perc > self.gamma * dark_perc):
+            if (cond1 and cond2 and cond3 and cond4):
                 filtered_edges.append(edge)
 
         return filtered_edges
@@ -259,21 +257,16 @@ class EdgeDetector:
 
         return refined_edges
     
-    def _edge_score(self, edge: Edge):
-        bright_perc = edge.bright_perc
-        dark_perc = edge.dark_perc
-        magnitudes = edge.magnitudes
-        angle = edge.angle
+    def rank_edges(self, edges: list[Edge]):
+        magnitudes = np.array([edge.magnitudes.mean() for edge in edges])
 
-        if bright_perc is None or dark_perc is None:
-            return -np.inf
+        min_mag = magnitudes.min()
+        max_mag = magnitudes.max()
 
-        contrast = bright_perc - dark_perc
-        scale = np.abs(bright_perc) + np.abs(dark_perc) + 1e-12
-        contrast_score = contrast / scale
+        for edge, mag in zip(edges, magnitudes):
+            magnitude_score = (mag - min_mag) / (max_mag - min_mag + 1e-12)
+            angle_score = abs(np.cos(edge.angle))
+            edge.score = magnitude_score + angle_score
 
-        magnitude_score = np.mean(magnitudes)
-
-        angle_score = np.cos(angle)
-
-        return contrast_score * magnitude_score * angle_score
+        ranked_edges = sorted(edges, key=lambda e: e.score, reverse=True)
+        return ranked_edges
