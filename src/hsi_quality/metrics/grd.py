@@ -28,6 +28,9 @@ class GRD(Metric):
         grd_list = []
         fwhm_list = []
         for band in range(cube.shape[2]):
+            if band < 40 or band > 80:
+                continue
+
             values = map_coordinates(cube[:, :, band], line, order=1, mode="nearest")
 
             # Skip if all intensities are zero
