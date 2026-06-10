@@ -212,3 +212,4 @@ results/**/*.png
 results/**/*.pdf
 results/**/*.csv
 models/
+metadata/

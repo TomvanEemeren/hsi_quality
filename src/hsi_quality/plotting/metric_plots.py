@@ -58,9 +58,10 @@ def plot_scores(scores: pd.DataFrame, save: bool = False):
     }
 
     metric = scores["metric"].iloc[0]
+    n_locations = scores["location"].nunique()
 
     mm = 1 / 25.4
-    fig, axes = plt.subplots(2, 3, figsize=(149 * mm, 80 * mm), sharex=True, sharey=True)
+    fig, axes = plt.subplots((n_locations) // 3, 3, figsize=(149 * mm, 80 * mm), sharex=True, sharey=True)
 
     for ax, location in zip(axes.flatten(), location_map.keys()):
         subset = scores[scores["location"] == location]
