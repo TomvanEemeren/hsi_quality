@@ -35,3 +35,10 @@ Run the `analyze_data.py` file to create the visualizations and plots:
 python analyze_data.py --location dubai --directory cleaned --zone 40n
 ```
 where zone corresponds to the UTM zone of the specified location.
+
+# Example
+The results folder already contains some prepared datasets A model can be fitted to these datasets by running the example file:
+```
+python fit_model.py --order 2 --metric SSIMLambda 
+```
+This will create a plot of the fitted model along with some plots of the prior and posterior distributions and puts them in the `models` directory.
