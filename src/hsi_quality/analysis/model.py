@@ -1,11 +1,19 @@
 import numpy as np
 import pymc as pm
 import arviz as az
-import xarray as xr
 from pathlib import Path
-import matplotlib.pyplot as plt
+from dataclasses import dataclass
 
 from hsi_quality import MODELS_DIR
+
+
+@dataclass
+class Prior:
+    mu: float | np.ndarray
+    sigma: float | np.ndarray
+
+    def create(self, name: str, dims=None):
+        return pm.Normal(name, mu=self.mu, sigma=self.sigma, dims=dims)
 
 
 class Model:
@@ -15,7 +23,7 @@ class Model:
         self.idata = None
         self.name = None
 
-    def fit(self, X: np.ndarray, y: np.ndarray):
+    def fit(self, X: np.ndarray, y: np.ndarray, prior: Prior, metric: str = None):
         X = X.reshape(-1, 1)
         Z = np.hstack([X**i for i in range(self.order + 1)])
 
@@ -28,8 +36,8 @@ class Model:
             X = pm.Data("X", Z, dims=["trial", "features"])
 
             # Model parameters
-            weights = pm.Normal("weights", dims="features")
-            sigma = pm.HalfNormal("sigma")
+            weights = prior.create("weights", dims="features")
+            sigma = pm.HalfNormal("sigma", mu=0, sigma=2.0)
 
             # Linear model
             mu = X @ weights
@@ -43,27 +51,18 @@ class Model:
         with model:
             pm.compute_log_likelihood(idata, progressbar=False)
 
-        idata.attrs["order"] = self.order
+        if metric:
+            self.name = metric
+        else:
+            self.name = f"order_{self.order}"
 
+        idata.attrs["order"] = self.order
+        idata.attrs["name"] = self.name
         self.idata = idata
         return idata
     
-    def save(self, name: str):
-        base_dir = Path(MODELS_DIR)
-        base_dir.mkdir(parents=True, exist_ok=True)
-        path = base_dir / name
-        self.name = name
-        self.idata.to_netcdf(path.with_suffix(".nc"))
-
-    def load(self, name: str):
-        base_dir = Path(MODELS_DIR)
-        path = base_dir / name
-        self.idata = az.from_netcdf(path.with_suffix(".nc"))
-        self.order = self.idata.attrs.get("order", 1)
-
-    def plot(self, X: np.ndarray, y: np.ndarray, save: bool = False):
-        x_plot = np.linspace(0, X.max() + 2, 200)
-        Z_plot = np.vstack([x_plot**k for k in range(self.order + 1)]).T
+    def predict(self, X: np.ndarray):
+        Z_plot = np.vstack([X**k for k in range(self.order + 1)]).T
 
         # (chains, draws, features)
         samples = self.idata.posterior["weights"].values
@@ -76,34 +75,36 @@ class Model:
         y_lower = np.percentile(y_pred, 2.5, axis=1)
         y_upper = np.percentile(y_pred, 97.5, axis=1)
 
-        fig, ax = plt.subplots(figsize=(6, 4))
-        ax.scatter(X, y, color="tab:blue", label="Data")
-        ax.plot(x_plot, y_mean, color="black", label="Posterior mean")
-        ax.fill_between(x_plot, y_lower, y_upper, color="tab:orange", alpha=0.3, label="95% Confidence interval")
-        ax.set_xlabel("Off-nadir angle (degrees)")
-        ax.set_ylabel("Normalized GRD")
-        ax.set_xlim(x_plot.min(), x_plot.max())
-        ax.grid(True)
-        ax.set_axisbelow(True) 
-        ax.legend(loc="upper left")
+        return y_mean, y_lower, y_upper
 
-        if save:
-            base_dir = Path(MODELS_DIR)
-            base_dir.mkdir(parents=True, exist_ok=True)
-            if self.name:
-                path = base_dir / self.name
-            else:
-                path = base_dir / f"model_order_{self.order}"
-            fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight")
-            fig.savefig(path.with_suffix(".png"), bbox_inches="tight")
-            plt.close(fig)
-        else:
-            plt.show()
+    def save(self):
+        name = self.idata.attrs.get("name", f"order_{self.order}")
+        base_dir = Path(MODELS_DIR)
+        base_dir.mkdir(parents=True, exist_ok=True)
+        path = base_dir / name
+        self.idata.to_netcdf(path.with_suffix(".nc"))
 
-def compare_models(idata1: xr.DataTree, idata2: xr.DataTree):
-    loo1 = az.loo(idata1)
-    loo2 = az.loo(idata2)
+    def load(self, name: str):
+        base_dir = Path(MODELS_DIR)
+        path = base_dir / name
+        self.idata = az.from_netcdf(path.with_suffix(".nc"))
 
-    df_comp_loo = az.compare({"model1": loo1, "model2": loo2})
+        self.order = self.idata.attrs.get("order")
+    
+    def get_name(self):
+        return self.name
+
+def compare_orders(X: np.ndarray, y: np.ndarray, orders: list[int], priors: list[Prior], visualize: bool = False):
+    loos = {}
+    for order, prior in zip(orders, priors):
+        model = Model(seed=42, order=order)
+        idata = model.fit(X, y, prior=prior)
+        loo = az.loo(idata)
+        loos[f"order_{order}"] = loo
+
+    df_comp_loo = az.compare(loos)
+
+    if visualize:
+        az.plot_compare(df_comp_loo)
 
     return df_comp_loo
