@@ -24,17 +24,18 @@ def plot_metric(scores, save: bool = False):
         plot_name = r"SSIM-$\lambda$"
 
     mm = 1/25.4
-    fig, ax = plt.subplots(figsize=(40*mm, 30*mm))
+    fig, ax = plt.subplots(figsize=(74*mm, 40*mm), constrained_layout=True)
     ax.scatter(x, y)
-    ax.set_xlabel("Off-nadir angle (deg)")
-    ax.set_ylabel(f"{plot_name}")
-    ax.grid(True)
+    ax.set_xlabel(r"Off-nadir angle, $\theta$, (deg)")
+    ax.set_ylabel(f"{plot_name} score")
+    ax.set_xticks(np.arange(0, 70, 10))
+    ax.grid(True, alpha=0.3)
     if save:
         base_dir = Path(RESULTS_DIR) / target
         base_dir.mkdir(parents=True, exist_ok=True)
         path = base_dir / metric_name
-        fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight", pad_inches=0, dpi=300)
-        fig.savefig(path.with_suffix(".png"), bbox_inches="tight", pad_inches=0, dpi=300)
+        fig.savefig(path.with_suffix(".pdf"), dpi=300)
+        fig.savefig(path.with_suffix(".png"), dpi=300)
         plt.close(fig)
     else:
         plt.show()
