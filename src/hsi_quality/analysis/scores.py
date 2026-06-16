@@ -21,7 +21,7 @@ def combine_scores(targets: list[str] | str, metric: str):
     return combined_scores
 
 
-def normalize_scores(combined_scores: pd.DataFrame, scaling_factor: float = 100.0):
+def normalize_scores(combined_scores: pd.DataFrame, scaling_factor: float = 1.0):
     metric = combined_scores["metric"].iloc[0]
     
     if metric in ["SSIMLambda", "MeanSSIM", "MvSSIM"]:

@@ -31,7 +31,7 @@ def plot_model(model: Model, X: np.ndarray, y: np.ndarray, save: bool = False):
         
     ax.set_xlabel(r"Off-nadir angle, $\theta$, (deg)")
     ax.set_xlim(x_plot.min(), x_plot.max())
-    ax.grid(True)
+    ax.grid(True, alpha=0.3)
     ax.set_axisbelow(True) 
     ax.legend(loc="upper left")
 
