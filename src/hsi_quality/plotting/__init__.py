@@ -4,10 +4,10 @@ from .spectrum_plots import plot_spectrum, plot_glitch
 from .metric_plots import plot_metric, plot_blurred, plot_scores
 from .fwhm_plots import plot_esf, plot_lsf, plot_fwhm, make_grd_plots
 from .edge_plots import plot_edge_pixels, plot_edge
-from .scores_plots import plot_outliers, plot_combined_scores
+from .scores_plots import plot_outliers, plot_combined_scores, plot_ssim_images, plot_image_histograms
 from .model_plots import plot_model, plot_prior, plot_posterior
 
 __all__ = ["plot_full_images", "plot_resampled_images", "get_band_image", "get_rgb_image", "plot_spectrum", "plot_metric", "select_box", 
            "intersect_captures", "plot_cloud_images", "calculate_scores", "plot_esf", "plot_lsf", "plot_fwhm", "plot_edge_pixels", "plot_edge", 
            "make_grd_plots", "plot_resampled_cloud_images", "plot_blurred", "plot_glitch", "plot_scores", "plot_outliers", "plot_combined_scores",
-           "plot_model", "plot_prior", "plot_posterior"]
+           "plot_model", "plot_prior", "plot_posterior", "plot_ssim_images", "plot_image_histograms"]
