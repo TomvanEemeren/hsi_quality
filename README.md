@@ -1,5 +1,7 @@
 # Hyperspectral Image Quality
 
+<img src="results/plots/model.png" alt="Model" width="500">
+
 # Getting Started
 
 ## Step 1

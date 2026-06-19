@@ -212,5 +212,6 @@ results/**/*.png
 results/**/*.pdf
 results/**/*.csv
 !results/scores/*.csv
+!results/plots/model.png
 models/
 metadata/
