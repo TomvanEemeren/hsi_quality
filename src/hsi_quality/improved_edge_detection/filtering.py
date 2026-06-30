@@ -42,7 +42,7 @@ def rank_edges(edges: list[Edge]) -> Edge:
 
 def get_bright_dark_sides(img, edge: Edge, box_size: int = 15):
     (cx, cy) = int(edge.centroid[0]), int(edge.centroid[1])
-    (nx, ny) = edge.normal
+    (nx, ny) = edge.normal_dir
 
     half = box_size // 2
 

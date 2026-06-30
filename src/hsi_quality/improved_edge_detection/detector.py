@@ -5,6 +5,7 @@ from .canny import CannyDetector
 from .hough import detect_lines
 from .filtering import filter_edges, rank_edges
 from .edge import Edge
+from .sub_pixel import sub_pixel_refinement
 
 from hypso import Hypso2
 
@@ -32,10 +33,46 @@ class EdgeDetector:
 
         filtered_edges = self.get_filtered_edges(img, edges)
 
-        best_edge = self.get_best_edge(filtered_edges)
+        longitudes = satobj.longitudes
+        latitudes = satobj.latitudes
 
-        return best_edge
+        for edge in filtered_edges:
+            cx, cy = edge.centroid
+            edge.longitude = longitudes[int(cy), int(cx)]
+            edge.latitude = latitudes[int(cy), int(cx)]
+
+        return filtered_edges, edge_pixels, img
     
+    def select_closest_edge(self, satobj: Hypso2, img: np.ndarray, edges: list[Edge], ref_longitude: float, ref_latitude: float) -> Edge:
+        closest_edge = None
+        min_distance = float('inf')
+
+        for edge in edges:
+            distance = np.sqrt((edge.longitude - ref_longitude) ** 2 + (edge.latitude - ref_latitude) ** 2)
+            if distance < min_distance:
+                min_distance = distance
+                closest_edge = edge
+
+        if closest_edge is not None:
+            refined_edge = self.get_refined_edge(img, closest_edge)
+
+            refined_edge.location = satobj.capture_target
+            refined_edge.name = satobj.capture_name
+
+            return refined_edge
+    
+        return None
+
+    def select_best_edge(self, satobj: Hypso2, img: np.ndarray, edges: list[Edge]) -> Edge:
+        best_edge = self.get_best_edge(edges)
+
+        refined_edge = self.get_refined_edge(img, best_edge)
+
+        refined_edge.location = satobj.capture_target
+        refined_edge.name = satobj.capture_name
+
+        return refined_edge
+
     def get_edge_pixels(self, img: np.ndarray, canny_detector: CannyDetector, gsd_x: float, gsd_y: float) -> np.ndarray:
         edge_pixels = canny_detector.detect_edge_pixels(img, gsd_x, gsd_y)
         return edge_pixels
@@ -61,3 +98,7 @@ class EdgeDetector:
     def get_best_edge(self, edges: list) -> Edge:
         best_edge = rank_edges(edges)
         return best_edge
+    
+    def get_refined_edge(self, img: np.ndarray, edge: Edge) -> Edge:
+        refined_edge = sub_pixel_refinement(img, edge)
+        return refined_edge

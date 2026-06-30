@@ -24,9 +24,9 @@ def detect_lines(edge_pixels: np.ndarray, cloud_mask: np.ndarray, gsd_x: float, 
     edges = []
     for line in lines:
         p0, p1 = line
-        dx = (p1[0] - p0[0]) * gsd_x
-        dy = (p1[1] - p0[1]) * gsd_y
-        angle = np.arctan2(dy, dx)
+        dx = (p1[0] - p0[0])
+        dy = (p1[1] - p0[1])
+        angle = np.arctan2(dy * gsd_y, dx * gsd_x)
         angle = np.abs(np.degrees(angle))
         #if 0 <= angle <= 30 or 150 <= angle <= 180:
         if 60 <= angle <= 120:
@@ -35,7 +35,7 @@ def detect_lines(edge_pixels: np.ndarray, cloud_mask: np.ndarray, gsd_x: float, 
             edge.p0 = p0
             edge.p1 = p1
             edge.centroid = ((p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2)
-            edge.normal = (-dy / norm, dx / norm)
+            edge.normal_dir = (-dy / norm, dx / norm)
             edge.angle = angle
             edges.append(edge)
 
